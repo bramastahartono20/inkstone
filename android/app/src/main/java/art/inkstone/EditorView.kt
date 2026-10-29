@@ -7,6 +7,7 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.*
 import org.json.JSONObject
 import kotlin.math.*
@@ -334,9 +335,9 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
             }
             "Transform"->{
                 val t=canvas.rasterTransform
-                group("Mode",t.mode){for(mode in listOf("Freeform","Uniform","Distort","Warp"))button(mode,t.mode==mode){t.mode=mode;canvas.invalidate();updateBottom()}}
-                group("Adjust"){button("Smaller"){t.scale(.9f)};button("Larger"){t.scale(1.1f)};button("Flip H"){transform("sx",-1f)};button("Flip V"){transform("sy",-1f)};button("Rotate 45°"){transform("angle",Math.PI.toFloat()/4)};button("Fit to Canvas"){t.fitToCanvas()}}
-                group("Options",t.interpolation){button("Snapping",t.snapping){t.snapping=!t.snapping;updateBottom()};button(t.interpolation){AlertDialog.Builder(activity).setTitle("Transform interpolation").setItems(arrayOf("Nearest","Bilinear")){_,index->t.interpolation=if(index==0)"Nearest"else"Bilinear";updateBottom()}.show()}}
+                if(t.groupId==null)group("Mode",t.mode){for(mode in listOf("Freeform","Uniform","Distort","Warp"))button(mode,t.mode==mode){t.mode=mode;canvas.invalidate();updateBottom()}}
+                if(t.groupId==null)group("Adjust"){button("Smaller"){t.scale(.9f)};button("Larger"){t.scale(1.1f)};button("Flip H"){transform("sx",-1f)};button("Flip V"){transform("sy",-1f)};button("Rotate 45°"){transform("angle",Math.PI.toFloat()/4)};button("Fit to Canvas"){t.fitToCanvas()}}
+                if(t.groupId==null)group("Options",t.interpolation){button("Snapping",t.snapping){t.snapping=!t.snapping;updateBottom()};button(t.interpolation){AlertDialog.Builder(activity).setTitle("Transform interpolation").setItems(arrayOf("Nearest","Bilinear")){_,index->t.interpolation=if(index==0)"Nearest"else"Bilinear";updateBottom()}.show()}}
                 button("Reset"){t.reset()};button("Cancel"){t.finish(cancel=true);session.tool="Paint";refreshTools()};button("Done"){session.tool="Paint";refreshTools()}
             }
             "Fill"->{button("ColorDrop"){showNotice("Tap an enclosed area to fill it")};button("Fill layer"){session.command("fill",JSONObject().put("color",colorLong()));activity.scheduleSave()};button("Done"){session.tool="Paint";refreshTools()}}
@@ -651,8 +652,8 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                 val id=group.getLong("id");val name=group.getString("name");val depth=path(id).size-1
                 val line=LinearLayout(activity).apply{gravity=Gravity.CENTER_VERTICAL;background=rounded(if(selectedLayerGroup==id)blue else 0x554c535a,StudioShape.CORNER_DP);isClickable=true;contentDescription="Group row $name";setOnClickListener{selectedLayerGroup=id;rebuildPanel(::layers)}}
                 line.addView(text(if(group.optBoolean("collapsed"))"▸"else"▾",16f).apply{gravity=Gravity.CENTER;contentDescription="Collapse group $name";isClickable=true;setOnClickListener{groupAction("update",id,JSONObject().put("collapsed",!group.optBoolean("collapsed")))}},LinearLayout.LayoutParams(dp(34),dp(48)))
-                line.addView(text(name+(if(group.optDouble("opacity",1.0)<1.0)" · ${(group.optDouble("opacity",1.0)*100).roundToInt()}%"else""),15f).apply{gravity=Gravity.CENTER_VERTICAL;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;isClickable=true;contentDescription="Toggle group $name";setOnClickListener{selectedLayerGroup=id;rebuildPanel(::layers)};LayerDrag.source(this,session,-id,name)},LinearLayout.LayoutParams(0,dp(48),1f))
-                line.addView(text(GroupAppearance.label(group.optString("blend","Pass Through")),13f).apply{gravity=Gravity.CENTER;maxLines=1;setPadding(0,0,0,0);isClickable=true;contentDescription="Options for group $name";setOnClickListener{selectedLayerGroup=id;groupOptions(group)}},LinearLayout.LayoutParams(dp(44),dp(48)))
+                line.addView(text(name+(if(group.optDouble("opacity",1.0)<1.0)" · ${(group.optDouble("opacity",1.0)*100).roundToInt()}%"else""),15f).apply{gravity=Gravity.CENTER_VERTICAL;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;isClickable=true;contentDescription="Toggle group $name";setOnClickListener{selectedLayerGroup=id;groupAction("update",id,JSONObject().put("collapsed",!group.optBoolean("collapsed")))};LayerDrag.source(this,session,-id,name)},LinearLayout.LayoutParams(0,dp(48),1f))
+                line.addView(text(GroupAppearance.label(group.optString("blend","Pass Through")),13f).apply{gravity=Gravity.CENTER;maxLines=1;setPadding(0,0,0,0);isClickable=true;contentDescription="Options for group $name";setOnClickListener{selectedLayerGroup=id;groupOptions(group,this)}},LinearLayout.LayoutParams(dp(44),dp(48)))
                 line.addView(CheckBox(activity).apply{isChecked=group.getBoolean("visible");contentDescription="$name group visible";setOnCheckedChangeListener{_,checked->groupAction("update",id,JSONObject().put("visible",checked))}},LinearLayout.LayoutParams(dp(44),dp(48)))
                 line.tag="group-$id";LayerDrag.source(line,session,-id,name)
                 LayerDrag.target(line,session,folder=true,open=!group.optBoolean("collapsed"),canJoin={source->if(source<0)path(id).none{it.getLong("id")==-source}else (0 until layers.length()).map{layers.getJSONObject(it)}.firstOrNull{it.getLong("id")==source}?.optLong("groupId",-1)!=id}){source,above,join->
@@ -739,7 +740,10 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         dismissPanel();actionTab("Prefs");StudioTheme.apply(this);refreshTools();canvas.invalidate()
     }
     private fun refreshLayers(expectedRevision:Long=panelRevision,after:()->Unit={}){
-        session.thumbnails{if(panel!=null && panelRevision==expectedRevision){rebuildPanel(::layers);after()}}
+        val oldScroll=(panel as? ViewGroup)?.let{root->(0 until root.childCount).map{root.getChildAt(it)}.filterIsInstance<ScrollView>().firstOrNull()}?.scrollY?:0
+        session.thumbnails{if(panel!=null && panelRevision==expectedRevision){rebuildPanel(::layers)
+            (panel as? ViewGroup)?.let{root->(0 until root.childCount).map{root.getChildAt(it)}.filterIsInstance<ScrollView>().firstOrNull()}?.let{scroll->scroll.post{scroll.scrollTo(0,oldScroll)}}
+            after()}}
     }
     private fun moveLayer(id:Long,target:Long?,group:Long?,above:Boolean,targetGroup:Long?=null,expectedRevision:Long=panelRevision){
         val motion=LayerDrag.capture(this,session);val revision=expectedRevision
@@ -811,15 +815,37 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         values.put("action",action);if(id!=null)values.put("id",id)
         session.command("group",values){result->if(!result.has("error")){refreshLayers(revision);activity.scheduleSave()}}
     }
-    private fun groupOptions(group:JSONObject){
+    private fun groupOptions(group:JSONObject,anchor:View){
         val id=group.getLong("id")
-        AlertDialog.Builder(activity).setTitle(group.getString("name")).setItems(arrayOf("Rename",if(group.optBoolean("locked"))"Unlock group"else"Lock group","Move contents","Ungroup","Blend & opacity")){_,which->when(which){
-            0->groupNameForm(group.getString("name"),rename=id)
-            1->groupAction("update",id,JSONObject().put("locked",!group.optBoolean("locked")))
-            2->GroupMoveDialog.show(activity){x,y->groupAction("translate",id,JSONObject().put("x",x).put("y",y))}
-            3->groupAction("ungroup",id)
-            4->GroupAppearance.show(activity,group.getString("name"),group.optString("blend","Pass Through"),group.optDouble("opacity",1.0).toFloat()){mode,opacity->groupAction("update",id,JSONObject().put("blend",mode).put("opacity",opacity.toDouble()))}
-        }}.show()
+        val body=LinearLayout(activity).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(12),dp(12),dp(12),dp(12));background=rounded(theme.surface,StudioShape.CORNER_DP)}
+        val popup=PopupWindow(body,min(dp(280),resources.displayMetrics.widthPixels-dp(32)),-2,true).apply{setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));elevation=dp(18).toFloat();isOutsideTouchable=true}
+        fun item(label:String,action:()->Unit){body.addView(row(label){popup.dismiss();action()})}
+        body.addView(text(group.getString("name"),18f))
+        item(if(group.optBoolean("collapsed"))"Expand group"else"Collapse group"){groupAction("update",id,JSONObject().put("collapsed",!group.optBoolean("collapsed")))}
+        item("Rename"){groupNameForm(group.getString("name"),rename=id)}
+        item(if(group.optBoolean("locked"))"Unlock group"else"Lock group"){groupAction("update",id,JSONObject().put("locked",!group.optBoolean("locked")))}
+        item("Move group contents"){
+            if(group.optBoolean("locked")){showNotice("Unlock this group first");return@item}
+            dismissPanel();session.command("deselect"){canvas.deselect();session.tool="Transform";canvas.rasterTransform.beginGroup(id);refreshTools();showNotice("Drag on the canvas to move the whole group. Done applies; Cancel restores.")}
+        }
+        body.addView(row("Blend & opacity"){
+            val controls=LinearLayout(activity).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(12),dp(8),dp(12),dp(8));background=rounded(theme.surface,StudioShape.CORNER_DP)}
+            val child=PopupWindow(ScrollView(activity).apply{addView(controls)},dp(260),min(dp(580),height-dp(100)),true).apply{setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));elevation=dp(18).toFloat();isOutsideTouchable=true}
+            controls.addView(row("← Back"){child.dismiss()})
+            var mode=group.optString("blend","Pass Through");var opacity=group.optDouble("opacity",1.0).toFloat()
+            fun applyLive(){session.command("group",JSONObject().put("action","update").put("id",id).put("blend",mode).put("opacity",opacity.toDouble())){result->if(!result.has("error"))activity.scheduleSave()}}
+            slider(controls,"Opacity",opacity){opacity=it;applyLive()}
+            for(m in GroupAppearance.modes)controls.addView(row(m){mode=m;applyLive()})
+            val pos=IntArray(2);body.getLocationOnScreen(pos);val decor=IntArray(2);activity.window.decorView.getLocationOnScreen(decor);pos[0]-=decor[0];pos[1]-=decor[1]
+            val childWidth=min(dp(260),(pos[0]-dp(8)).coerceAtLeast(dp(160)))
+            child.width=childWidth
+            child.setOnDismissListener{refreshLayers()}
+            popup.setOnDismissListener{child.dismiss()}
+            child.showAtLocation(this,Gravity.TOP or Gravity.LEFT,(pos[0]-childWidth-dp(6)).coerceAtLeast(dp(4)),dp(barHeight))
+        })
+        item("Ungroup"){groupAction("ungroup",id)}
+        val at=IntArray(2);anchor.getLocationInWindow(at)
+        popup.showAtLocation(this,Gravity.TOP or Gravity.LEFT,(at[0]-dp(280)).coerceAtLeast(dp(8)),at[1].coerceAtMost((height-dp(360)).coerceAtLeast(dp(8))))
     }
     private fun chooseLayerGroup(index:Int){
         val groups=session.info.optJSONArray("groups")?:org.json.JSONArray()
@@ -871,10 +897,20 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
             }
         }
     }
-    private fun symmetrySettings(){
-        val modes=arrayOf("Off","Vertical","Horizontal","Quadrant","Radial 4")
-        AlertDialog.Builder(activity).setTitle("Drawing symmetry").setSingleChoiceItems(modes,modes.indexOf(session.symmetryMode)){dialog,which->session.setSymmetry(modes[which]);activity.savePreferences();canvas.invalidate();dialog.dismiss();dismissPanel();showNotice("Symmetry: ${modes[which]} · Paint and Erase")}.setNegativeButton("Cancel",null).show()
-    }
+    private fun symmetrySettings(){rebuildPanel{panel("Symmetry","Drawing symmetry",430,left=true){body->
+        body.addView(row("← Back"){rebuildPanel{actionTab("Canvas")}})
+        for(mode in listOf("Off","Vertical","Horizontal","Quadrant","Radial 4"))body.addView(row(mode,if(mode==session.symmetryMode)"Selected"else""){session.setSymmetry(mode);activity.savePreferences();canvas.invalidate();symmetrySettings()})
+    }}}
+    private fun guideSettings(){rebuildPanel{panel("Guides","Drawing guides",620,left=true){body->
+        body.addView(row("← Back"){rebuildPanel{actionTab("Canvas")}})
+        val guide=canvas.guides
+        fun changed(){guide.save();canvas.invalidate()}
+        toggle(body,"Show drawing guide",guide.enabled){guide.enabled=it;session.guide=it;changed()}
+        for(mode in listOf("2D Grid","Isometric","1-point Perspective","2-point Perspective","3-point Perspective"))body.addView(row(mode,if(mode==guide.mode)"Selected"else""){guide.mode=mode;guide.enabled=true;session.guide=true;changed();guideSettings()})
+        slider(body,"Spacing",(guide.spacing-20f)/380f){guide.spacing=20f+it*380f;changed()}
+        slider(body,"Opacity",guide.opacity){guide.opacity=it.coerceAtLeast(.05f);changed()}
+        if(guide.perspective)body.addView(row("Edit vanishing points"){guide.editing=true;dismissPanel();session.tool="Guide";refreshTools();canvas.invalidate()})
+    }}}
     internal var colorBeforeMask:Int?=null;private set
     private var reference:ReferencePanel?=null
     internal fun showReference(){
@@ -910,7 +946,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                 body.addView(row("Symmetry",session.symmetryMode){symmetrySettings()})
                 body.addView(row("Reference image"){dismissPanel();showReference()})
                 toggle(body,"Drawing Guide",canvas.guides.enabled){session.guide=it;canvas.guides.enabled=it;canvas.guides.save();canvas.invalidate()}
-                body.addView(row("Drawing guide settings",canvas.guides.mode){canvas.guides.settings(activity,{canvas.invalidate()},{dismissPanel();session.tool="Guide";refreshTools()})})
+                body.addView(row("Drawing guide settings",canvas.guides.mode){guideSettings()})
                 body.addView(row("Canvas Atlas"){dismissPanel();activity.showAtlas()})
                 body.addView(row("Fit canvas"){canvas.animateFit();dismissPanel()})
                 body.addView(row("Reset rotation"){canvas.resetRotation();dismissPanel();showNotice("Rotation reset to 0°")})

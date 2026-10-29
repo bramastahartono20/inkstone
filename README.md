@@ -6,13 +6,13 @@ Inkstone is a source-available drawing app for Android tablets and pressure-sens
 
 ![Inkstone — custom drawing engine built in Rust](artifacts/promotion/01-main.png)
 
-**0.21 early-development release:** adds nested Raster groups, independent/empty folder creation, off-canvas drawing and complete-layer transforms. Includes QuickShape corrections and 16 confirmed bug fixes from a source/runtime audit. See [release instructions and limits](docs/RELEASE_0_21.md) and the [bug-hunt report](docs/BUG_HUNT_0_21.md).
+**0.22 early-development release:** improves group controls with direct on-canvas movement, live blend/opacity popups and stable list scrolling. Adds consistent colour swatches, reference-image sampling feedback and custom guide/symmetry navigation. See [release notes](docs/RELEASE_0_22.md). The previous [bug-hunt report](docs/BUG_HUNT_0_21.md) remains available.
 
 **Testing:** local regression/build checks are recorded in [verification](docs/VERIFICATION.md). Physical stylus behavior, Android Vulkan, animation pacing and device-reported Fade behavior still need testing. Current limitations are tracked in [known issues](docs/KNOWN_ISSUES.md).
 
 ## Download
 
-Get the **[0.21 APK](https://github.com/bramastahartono20/inkstone/releases/tag/v0.21)** from GitHub Releases. Requires Android 8.0 or later; ARM64 and x86-64 are included. Enable installation from the app used to open the APK when Android asks.
+Get the **[0.22 APK](https://github.com/bramastahartono20/inkstone/releases/tag/v0.22)** from GitHub Releases. Requires Android 8.0 or later; ARM64 and x86-64 are included. Enable installation from the app used to open the APK when Android asks.
 
 The preview uses package `art.inkstone.preview`. Install over an existing preview to retain local artwork. Artwork lives in app-private storage: export editable `.inkstone` backups before uninstalling or clearing app data. No account, server, internet permission, analytics, or subscription is required.
 

@@ -1,7 +1,7 @@
 {
-  "apk": "inkstone-0.21-debug.apk",
-  "sha256": "70cdbb46eda55150a17c3bbde74ba471b3d8bed79aa62529c186c46fcc69aba5",
-  "bytes": 15737306,
+  "apk": "inkstone-0.22-debug.apk",
+  "sha256": "42d34267b3e1ad294d1eb860fab4701f1ec01892b6e07efbff4445b8e13fa069",
+  "bytes": 10776625,
   "abis": {
     "arm64-v8a": {
       "bytes": 4393984,

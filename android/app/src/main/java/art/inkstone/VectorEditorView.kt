@@ -116,7 +116,8 @@ internal class VectorEditorView(val activity:MainActivity,val document:VectorDoc
         hud.value=slider.value;hud.opacityMode=opacity;hud.soft=false
         (hud.layoutParams as? LayoutParams)?.let{it.leftMargin=dp(50);it.topMargin=(rail.top+slider.top+slider.thumbY-dp(102)).roundToInt().coerceIn(dp(barHeight+8),max(dp(barHeight+8),height-dp(168)));hud.layoutParams=it};hud.invalidate()
     }
-    fun dismissPanel():Boolean{val old=panel?:return false;panel=null;panelName="";StudioMotion.dismiss(old){removeView(old)};refresh();return true}
+    private var layersScroll=0
+    fun dismissPanel():Boolean{val old=panel?:return false;if(panelName=="Layers"){layersScroll=(old as? android.view.ViewGroup)?.let{root->(0 until root.childCount).map{root.getChildAt(it)}.filterIsInstance<ScrollView>().firstOrNull()}?.scrollY?:0};panel=null;panelName="";StudioMotion.dismiss(old){removeView(old)};refresh();return true}
     private var replacingLayerPanel=false
     private fun panel(name:String,left:Boolean=false,body:(LinearLayout)->Unit){
         val old=if(replacingLayerPanel && panelName==name)panel else null
@@ -127,14 +128,14 @@ internal class VectorEditorView(val activity:MainActivity,val document:VectorDoc
         heading.addView(TextView(activity).apply{text=name;textSize=26f;setTextColor(theme.text);maxLines=3;setPadding(0,dp(8),0,dp(8));setTypeface(null,android.graphics.Typeface.BOLD)},LinearLayout.LayoutParams(0,-2,1f))
         heading.addView(ToolIcon(activity,"Close"){dismissPanel()},LinearLayout.LayoutParams(dp(44),dp(44)));content.addView(heading)
         val items=LinearLayout(activity).apply{orientation=LinearLayout.VERTICAL};body(items)
-        content.addView(ScrollView(activity).apply{addView(items)},LinearLayout.LayoutParams(-1,-2))
+        content.addView(ScrollView(activity).apply{addView(items);if(name=="Layers")post{scrollTo(0,layersScroll)}},LinearLayout.LayoutParams(-1,-2))
         val pw=min(dp(430),(width.takeIf{it>0}?:resources.displayMetrics.widthPixels)-dp(56))
         if(old!=null)removeView(old)
         addView(content,LayoutParams(pw,min(dp(620),max(dp(160),height-dp(barHeight+60))),Gravity.TOP or if(left)Gravity.LEFT else Gravity.RIGHT).apply{topMargin=dp(barHeight);if(left)leftMargin=dp(48) else rightMargin=dp(10)})
         StudioTheme.apply(content);panel=content;panelName=name;if(old==null)StudioMotion.reveal(content,if(left).15f else .85f);refresh()
     }
     private fun updateNodeControls(){
-        nodeControls.removeAllViews();if(canvas.guides.editing){nodeScroll.visibility=VISIBLE;nodeControls.addView(button("Done editing guides"){canvas.guides.editing=false;canvas.guides.save();canvas.invalidate();refresh()});return};nodeScroll.visibility=if(canvas.tool=="Nodes" && canvas.selected!=null)VISIBLE else GONE
+        nodeControls.removeAllViews();if(canvas.movingGroup!=null){nodeScroll.visibility=VISIBLE;nodeControls.addView(button("Done moving group"){canvas.finishGroupMove();refresh()});return};if(canvas.guides.editing){nodeScroll.visibility=VISIBLE;nodeControls.addView(button("Done editing guides"){canvas.guides.editing=false;canvas.guides.save();canvas.invalidate();refresh()});return};nodeScroll.visibility=if(canvas.tool=="Nodes" && canvas.selected!=null)VISIBLE else GONE
         val obj=canvas.selected?:return;val anchors=VectorGeometry.anchors(obj);val index=anchors.indexOfFirst{it.first==canvas.selectedNode}
         if(obj.kind in listOf("Line","Pen","Bezier"))nodeControls.addView(button(if(canvas.addingAnchor)"Tap path · Cancel" else "+ Anchor"){canvas.addAnchorMode()}.apply{contentDescription="Add anchor";tooltipText="Tap the selected path to add an anchor point"},LinearLayout.LayoutParams(dp(if(canvas.addingAnchor)150 else 106),dp(44)))
         if(obj.kind in listOf("Line","Pen","Bezier")){
@@ -346,16 +347,30 @@ internal class VectorEditorView(val activity:MainActivity,val document:VectorDoc
         }.show()
     }
     private fun vectorGroupOptions(group:VectorGroup){
-        AlertDialog.Builder(activity).setTitle(group.name).setItems(arrayOf("Rename",if(group.locked)"Unlock group"else"Lock group","Move contents","Ungroup","Blend & opacity")){_,which->
-            fun finish(){dismissPanel();layers()}
-            when(which){
-                0->activity.textDialog("Group name",group.name){name->canvas.edit{group.name=name};finish()}
-                1->{canvas.edit{group.locked=!group.locked};finish()}
-                2->GroupMoveDialog.show(activity){x,y->canvas.edit{document.translateGroup(group,x,y)};finish()}
-                3->{canvas.edit{document.ungroup(group)};finish()}
-                4->GroupAppearance.show(activity,group.name,group.blend,group.opacity){mode,opacity->canvas.edit{group.blend=mode;group.opacity=opacity};finish()}
-            }
-        }.show()
+        val body=LinearLayout(activity).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(12),dp(12),dp(12),dp(12));setBackgroundColor(theme.surface)}
+        val popup=PopupWindow(body,dp(260).coerceAtMost(width-dp(20)),-2,true).apply{setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));elevation=dp(16).toFloat();isOutsideTouchable=true}
+        fun item(label:String,action:()->Unit){body.addView(button(label){popup.dismiss();action()},LinearLayout.LayoutParams(-1,dp(48)))}
+        fun finish(){dismissPanel();layers()}
+        item(if(group.collapsed)"Expand group"else"Collapse group"){canvas.edit{group.collapsed=!group.collapsed};finish()}
+        item(if(group.locked)"Unlock group"else"Lock group"){canvas.edit{group.locked=!group.locked};finish()}
+        item("Rename"){panel("Rename group"){b->val field=EditText(activity).apply{setText(group.name)};b.addView(field);b.addView(button("Save"){canvas.edit{group.name=field.text.toString().take(100)};finish()})}}
+        item("Move group contents"){dismissPanel();canvas.moveGroup(group.id);activity.message("Drag on the canvas to move the group. Lift to apply; Undo restores.");refresh()}
+        body.addView(button("Blend & opacity"){
+            val b=LinearLayout(activity).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(12),dp(8),dp(12),dp(8));setBackgroundColor(theme.surface)}
+            val child=PopupWindow(ScrollView(activity).apply{addView(b)},dp(240),min(dp(560),height-dp(100)),true).apply{setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));elevation=dp(18).toFloat();isOutsideTouchable=true}
+            b.addView(button("← Back"){child.dismiss()})
+            val label=button("Opacity ${(group.opacity*100).toInt()}%"){};b.addView(label)
+            b.addView(SeekBar(activity).apply{max=100;progress=(group.opacity*100).toInt();contentDescription="Group opacity";setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{
+                override fun onStartTrackingTouch(v:SeekBar){};override fun onStopTrackingTouch(v:SeekBar){}
+                override fun onProgressChanged(v:SeekBar,p:Int,user:Boolean){if(user){canvas.edit{group.opacity=p/100f};label.text="Opacity $p%"}}
+            })})
+            for(mode in GroupAppearance.modes)b.addView(button(mode){canvas.edit{group.blend=mode}})
+            val pos=IntArray(2);body.getLocationOnScreen(pos);val decor=IntArray(2);activity.window.decorView.getLocationOnScreen(decor);pos[0]-=decor[0];pos[1]-=decor[1];child.width=min(dp(240),(pos[0]-dp(8)).coerceAtLeast(dp(160)))
+            popup.setOnDismissListener{child.dismiss()}
+            child.showAtLocation(this,Gravity.TOP or Gravity.LEFT,(pos[0]-child.width-dp(6)).coerceAtLeast(dp(4)),dp(barHeight))
+        },LinearLayout.LayoutParams(-1,dp(48)))
+        item("Ungroup"){canvas.edit{document.ungroup(group)};finish()}
+        popup.showAtLocation(this,Gravity.TOP or Gravity.RIGHT,dp(350).coerceAtMost((width-dp(270)).coerceAtLeast(0)),dp(100))
     }
     internal fun backgroundSettings(){panel("Background colour"){body->
         body.addView(BackgroundControls(activity,document.background,document.backgroundVisible,{canvas.ink}){color,visible->

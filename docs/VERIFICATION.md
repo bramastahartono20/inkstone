@@ -1,5 +1,13 @@
 # Verification — 29 October 2026
 
+## 0.22 release verification
+
+- Android: 137 tests passed, 0 failures and 0 errors. Lint: 0 errors, 132 warnings. Full Android build succeeded. Native engine sources and binaries are unchanged from the previously validated 0.21 release.
+- Package `art.inkstone.preview`, version `0.22`, code 35. The existing v2 signing certificate is retained. Both packaged ABIs match native outputs, expose fourteen JNI methods and retain 16 KB ELF alignment.
+- APK: 10,776,625 bytes; SHA-256 `42d34267b3e1ad294d1eb860fab4701f1ec01892b6e07efbff4445b8e13fa069`.
+- User confirmed testing the local group-drag build before approving publication. Final release metadata was rebuilt and verified. [Machine-readable verification](../artifacts/release-0.22-verification.json). GitHub CI is checked separately.
+
+
 ## 0.21 release candidate
 
 - 103 Rust tests passed; the 12 physical GPU regressions also passed locally using Metal. 132 Android framework/JNI tests passed. Lint: 0 errors, 127 warnings. Native and Android builds passed; device Vulkan/stylus testing is separate.

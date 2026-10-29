@@ -7,6 +7,12 @@ import kotlin.math.*
 
 internal class VectorCanvas(private val activity:MainActivity,val document:VectorDocument):View(activity){
     val guides=DrawingGuide(activity)
+    var movingGroup:Long?=null;private set
+    private var groupBefore:ByteArray?=null
+    private var groupOrigin=PointF()
+    private var groupMatrices=emptyList<Pair<VectorObject,Matrix>>()
+    fun moveGroup(id:Long){changeTool("Select");movingGroup=id;onSelection()}
+    fun finishGroupMove(){cancelGesture();movingGroup=null;onSelection()}
     var tool="Pen"
     var ink=0xff202020.toInt()
     var strokeWidth=5f
@@ -66,8 +72,8 @@ internal class VectorCanvas(private val activity:MainActivity,val document:Vecto
     fun fit(){if(width<=0 || height<=0)return;zoom=min((width-64*density)/document.width,(height-64*density)/document.height).coerceAtLeast(.01f);fitScale=zoom;pan=PointF();rotation=0f;fitted=true;invalidate()}
     override fun onSizeChanged(w:Int,h:Int,oldw:Int,oldh:Int){val camera=activity.atlas?.pageCamera(w,h);if(camera!=null)setAtlasCamera(camera)else if(!fitted || oldw!=w || oldh!=h)fit()}
     fun snapshot():ByteArray=before?.clone()?:document.encode()
-    fun cancelGesture(){removeCallbacks(holdColor);pickingColor=false;pickTouch=null;before?.let{document.restore(it)};before=null;draft=null;pointer=-1;mode="";multi=false;invalidate();onSelection()}
-    fun changeTool(value:String){joiningPaths=false;addingAnchor=false;cancelGesture();if(value!="Nodes")selectedNode=null;tool=value;invalidate();onSelection()}
+    fun cancelGesture(){groupBefore?.let{document.restore(it)};groupBefore=null;groupMatrices=emptyList();removeCallbacks(holdColor);pickingColor=false;pickTouch=null;before?.let{document.restore(it)};before=null;draft=null;pointer=-1;mode="";multi=false;invalidate();onSelection()}
+    fun changeTool(value:String){movingGroup=null;joiningPaths=false;addingAnchor=false;cancelGesture();if(value!="Nodes")selectedNode=null;tool=value;invalidate();onSelection()}
     fun undo(){addingAnchor=false;cancelGesture();if(document.undo()){selectedId=null;selectedNode=null;onChanged()};activity.message(document.historyNotice);invalidate();onSelection()}
     fun redo(){addingAnchor=false;cancelGesture();if(document.redo()){selectedId=null;selectedNode=null;onChanged()};activity.message(document.historyNotice);invalidate();onSelection()}
     fun edit(change:()->Unit){cancelGesture();runCatching{document.edit(change)}.onFailure{activity.message(it.message?:"Could not change object")}.onSuccess{onChanged()};invalidate();onSelection()}
@@ -259,6 +265,15 @@ internal class VectorCanvas(private val activity:MainActivity,val document:Vecto
         before=null;draft=null;pointer=-1;mode="";invalidate();onSelection()
     }
     override fun onTouchEvent(e:MotionEvent):Boolean {
+        movingGroup?.let{id->
+            when(e.actionMasked){
+                MotionEvent.ACTION_DOWN->{cancelGesture();val group=document.groups.firstOrNull{it.id==id};if(group==null || group.locked){activity.message("Unlock this group first");return true};groupBefore=document.encode();groupOrigin=pagePoint(e.x,e.y);groupMatrices=document.layers.filter{it.groupId==id && !it.locked}.flatMap{it.objects}.map{it to Matrix(it.matrix)}}
+                MotionEvent.ACTION_MOVE->{if(e.pointerCount==1 && groupBefore!=null){val at=pagePoint(e.x,e.y);for((obj,matrix)in groupMatrices){obj.matrix.set(matrix);obj.matrix.postTranslate(at.x-groupOrigin.x,at.y-groupOrigin.y)};invalidate()}}
+                MotionEvent.ACTION_UP->{groupBefore?.let{state->runCatching{document.commit(state)}.onFailure{document.restore(state);activity.message(it.message?:"Cannot move group")};onChanged()};groupBefore=null;groupMatrices=emptyList();invalidate()}
+                MotionEvent.ACTION_POINTER_DOWN,MotionEvent.ACTION_CANCEL->cancelGesture()
+            };return true
+        }
+
         if(e.actionMasked==MotionEvent.ACTION_DOWN){atlasAnimator?.cancel();atlasAnimator=null}
         if(activity.atlas?.touch(e,this,screenMatrix(),::setAtlasCamera)==true)return true
         if(guides.touch(e,pagePoint(e.x,e.y),document.width.toFloat(),document.height.toFloat(),32*density/zoom)){invalidate();return true}

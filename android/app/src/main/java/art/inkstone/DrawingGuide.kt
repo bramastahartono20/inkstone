@@ -48,18 +48,17 @@ internal class DrawingGuide(context:Context){
         };return true
     }
     fun settings(context:Context,changed:()->Unit,edit:()->Unit){
-        val types=arrayOf("2D Grid","Isometric","1-point Perspective","2-point Perspective","3-point Perspective")
-        AlertDialog.Builder(context).setTitle("Drawing guides").setSingleChoiceItems(types,types.indexOf(mode)){dialog,index->mode=types[index];enabled=true;save();changed();dialog.dismiss();options(context,changed,edit)}.setNeutralButton(if(enabled)"Turn off"else"Turn on"){_,_->enabled=!enabled;save();changed()}.setNegativeButton("Close",null).show()
-    }
-    private fun options(context:Context,changed:()->Unit,edit:()->Unit){
-        val body=LinearLayout(context).apply{orientation=LinearLayout.VERTICAL;setPadding(24,12,24,12)}
-        fun spacingText()=if(perspective)"Ray spacing: ${(spacing/16f).roundToInt().coerceIn(2,24)}°"else"Grid spacing: ${spacing.toInt()} px"
-        val label=TextView(context).apply{text=spacingText()};body.addView(label)
-        body.addView(SeekBar(context).apply{max=380;progress=(spacing-20).toInt();contentDescription="Guide spacing";setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{override fun onStartTrackingTouch(s:SeekBar){};override fun onStopTrackingTouch(s:SeekBar){save()};override fun onProgressChanged(s:SeekBar,p:Int,user:Boolean){spacing=p+20f;label.text=spacingText();changed()}})})
-        body.addView(TextView(context).apply{text="Guide opacity"})
-        body.addView(SeekBar(context).apply{max=95;progress=(opacity*100-5).toInt();contentDescription="Guide opacity";setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{override fun onStartTrackingTouch(s:SeekBar){};override fun onStopTrackingTouch(s:SeekBar){save()};override fun onProgressChanged(s:SeekBar,p:Int,user:Boolean){opacity=(p+5)/100f;changed()}})})
-        val dialog=AlertDialog.Builder(context).setTitle(mode).setView(body).setPositiveButton("Done"){_,_->save();changed()}.setNegativeButton("Guide type"){_,_->settings(context,changed,edit)}
-        if(perspective)dialog.setNeutralButton("Edit vanishing points"){_,_->editing=true;edit();changed()}
-        dialog.show()
+        val activity=context as? android.app.Activity?:return
+        val body=LinearLayout(context).apply{orientation=LinearLayout.VERTICAL;setPadding(20,16,20,16);setBackgroundColor(StudioColors.surface)}
+        val popup=PopupWindow(ScrollView(context).apply{addView(body)},(320*density).toInt().coerceAtMost(context.resources.displayMetrics.widthPixels-32),(540*density).toInt().coerceAtMost(context.resources.displayMetrics.heightPixels-64),true).apply{setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));elevation=16*density;isOutsideTouchable=true}
+        fun button(label:String,action:()->Unit){body.addView(TextView(context).apply{text=label;textSize=15f;setTextColor(Color.WHITE);setPadding(12,16,12,16);isClickable=true;setOnClickListener{action()}})}
+        button("← Back"){popup.dismiss()}
+        for(type in listOf("2D Grid","Isometric","1-point Perspective","2-point Perspective","3-point Perspective"))button(type){mode=type;enabled=true;save();changed()}
+        button("Show / hide guide"){enabled=!enabled;save();changed()}
+        fun control(title:String,initial:Int,maxValue:Int,change:(Int)->Unit){button(title){};body.addView(SeekBar(context).apply{max=maxValue;progress=initial;contentDescription=title;setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{override fun onStartTrackingTouch(v:SeekBar){};override fun onStopTrackingTouch(v:SeekBar){save()};override fun onProgressChanged(v:SeekBar,p:Int,user:Boolean){if(user){change(p);changed()}}})})}
+        control("Guide spacing",(spacing-20).toInt(),380){spacing=it+20f}
+        control("Guide opacity",(opacity*100).toInt(),100){opacity=(it/100f).coerceAtLeast(.05f)}
+        button("Edit vanishing points"){if(perspective){editing=true;popup.dismiss();edit();changed()}}
+        popup.showAtLocation(activity.window.decorView,android.view.Gravity.CENTER,0,0)
     }
 }

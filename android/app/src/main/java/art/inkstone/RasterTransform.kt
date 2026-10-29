@@ -26,6 +26,13 @@ internal class TransformSnapshot(val info:JSONObject,val active:Int,val bounds:R
 }
 
 internal class RasterTransform(private val canvas:PaintCanvas,private val session:DrawingSession){
+    var groupId:Long?=null;private set
+    fun beginGroup(id:Long){dispose();groupId=id;ensure()}
+    private fun member(info:JSONObject,index:Int):Boolean{
+        val id=groupId?:return false;val groups=info.optJSONArray("groups")?:JSONArray();val layer=info.getJSONArray("layers").getJSONObject(index)
+        var next=if(layer.isNull("groupId"))null else layer.getLong("groupId");val seen=mutableSetOf<Long>()
+        while(next!=null && seen.add(next)){if(next==id)return true;val g=(0 until groups.length()).map{groups.getJSONObject(it)}.firstOrNull{it.getLong("id")==next}?:break;next=if(g.isNull("parent_id"))null else g.getLong("parent_id")};return false
+    }
     private var snapshot:TransformSnapshot?=null
     private var generation=0
     private var loading=false
@@ -58,11 +65,15 @@ internal class RasterTransform(private val canvas:PaintCanvas,private val sessio
     internal fun currentMatrix()=Matrix(matrix)
     fun ensure(){
         if(session.tool!="Transform" || loading || snapshot!=null || committing)return
-        if(session.info.getJSONArray("layers").getJSONObject(session.info.getInt("active")).optBoolean("locked")){canvas.onGesture("This layer is locked");return}
+        if(groupId==null && session.info.getJSONArray("layers").getJSONObject(session.info.getInt("active")).optBoolean("locked")){canvas.onGesture("This layer is locked");return}
         loading=true;session.transformEditing=true;val token=++generation
         session.transformSnapshot{value->
             if(token!=generation || session.tool!="Transform"){value?.recycle();return@transformSnapshot}
             loading=false
+            if(value!=null && groupId!=null){value.bounds.setEmpty();for(i in 0 until value.info.getJSONArray("layers").length())if(member(value.info,i)){
+                if(value.planes[i].image!=null)value.bounds.union(value.planes[i].rect)
+                if(i==value.active && value.planes.last().image!=null)value.bounds.union(value.planes.last().rect)
+            }}
             if(value==null || value.bounds.isEmpty){session.transformEditing=false;value?.recycle();canvas.onGesture("The active layer has no selected pixels to move");return@transformSnapshot}
             snapshot=value;matrix.reset();resetMesh();canvas.invalidate()
         }
@@ -77,15 +88,21 @@ internal class RasterTransform(private val canvas:PaintCanvas,private val sessio
         val values=FloatArray(9);matrix.getValues(values)
         committing=true
         val operation:String;val payload=JSONObject().put("filter",interpolation)
-        if(meshChanged()){
+        if(groupId!=null){operation="group";payload.put("action","translate").put("id",groupId).put("x",values[Matrix.MTRANS_X].roundToInt()).put("y",values[Matrix.MTRANS_Y].roundToInt())}
+        else if(meshChanged()){
             operation="transformMesh";payload.put("columns",SmoothWarp.STEPS).put("rows",SmoothWarp.STEPS).put("points",JSONArray().also{array->SmoothWarp.grid(mappedMesh()).forEach{array.put(JSONArray().put(it.x).put(it.y))}})
         }else{operation="transformProjective";payload.put("matrix",JSONArray(values.map{it.toDouble()}))}
         session.command(operation,payload){result->if(result.has("error")){dispose();canvas.invalidate()}else awaitingFrame=true}
     }
 
     fun onFrame(){if(awaitingFrame){dispose();canvas.deselect();canvas.invalidate();if(session.tool=="Transform")ensure()}}
-    fun dispose(){session.transformEditing=false;session.transformInteracting=false;generation++;snapshot?.recycle();snapshot=null;loading=false;committing=false;awaitingFrame=false;matrix.reset();mesh.clear();snapX=null;snapY=null}
+    fun dispose(){session.transformEditing=false;session.transformInteracting=false;generation++;groupId=null;snapshot?.recycle();snapshot=null;loading=false;committing=false;awaitingFrame=false;matrix.reset();mesh.clear();snapX=null;snapY=null}
     private fun layerSource(c:Canvas,index:Int,s:TransformSnapshot){
+        if(groupId!=null){val save=c.save();if(member(s.info,index))c.concat(matrix)
+            val plane=s.planes[index];plane.image?.let{c.drawBitmap(it,null,plane.rect,p)}
+            if(index==s.active){val moving=s.planes.last();moving.image?.let{c.drawBitmap(it,null,moving.rect,p)}}
+            c.restoreToCount(save);return
+        }
         val plane=s.planes[index];plane.image?.let{c.drawBitmap(it,null,plane.rect,p)}
         if(index==s.active){val moving=s.planes.last();moving.image?.let{
             p.isFilterBitmap=interpolation!="Nearest"
@@ -148,6 +165,7 @@ internal class RasterTransform(private val canvas:PaintCanvas,private val sessio
         return PointF(q[2]+(q[2]-q[0])/length*extra,q[3]+(q[3]-q[1])/length*extra)
     }
     fun drawHandles(c:Canvas){
+        if(groupId!=null){bounds?.let{r->p.color=StudioColors.accent;p.style=Paint.Style.STROKE;p.strokeWidth=1.5f*canvas.resources.displayMetrics.density/canvas.transformZoom;c.drawRect(r,p);p.style=Paint.Style.FILL};return}
         if(snapshot==null)return;val q=if(mode=="Warp")mappedMesh() else mapped();val d=canvas.resources.displayMetrics.density/canvas.transformZoom
         p.color=StudioColors.accent;p.style=Paint.Style.STROKE;p.strokeWidth=1.3f*d;p.pathEffect=DashPathEffect(floatArrayOf(6*d,4*d),0f)
         if(mode=="Warp"){
@@ -201,6 +219,14 @@ internal class RasterTransform(private val canvas:PaintCanvas,private val sessio
     }
     fun touch(e:MotionEvent):Boolean{
         if(!ready){ensure();if(e.actionMasked==MotionEvent.ACTION_DOWN)canvas.onGesture(if(committing)"Applying transform…"else"Preparing transform…");return true}
+        if(groupId!=null){
+            when(e.actionMasked){
+                MotionEvent.ACTION_DOWN->{canvas.onStrokeStart();session.transformInteracting=true;origin=canvas.transformDocumentPoint(e.x,e.y);gestureBefore=Matrix(matrix);pointerA=e.getPointerId(0)}
+                MotionEvent.ACTION_MOVE->{val index=e.findPointerIndex(pointerA);if(index>=0){val at=canvas.transformDocumentPoint(e.getX(index),e.getY(index));matrix.set(gestureBefore);matrix.postTranslate(at.x-origin.x,at.y-origin.y)}}
+                MotionEvent.ACTION_CANCEL->{matrix.set(gestureBefore);session.transformInteracting=false;pointerA=-1}
+                MotionEvent.ACTION_UP->{session.transformInteracting=false;pointerA=-1}
+            };canvas.invalidate();return true
+        }
         when(e.actionMasked){
             MotionEvent.ACTION_DOWN->{canvas.onStrokeStart();session.transformInteracting=true;pen=e.getToolType(0) in listOf(MotionEvent.TOOL_TYPE_STYLUS,MotionEvent.TOOL_TYPE_ERASER);pointerA=e.getPointerId(0);pointerB=-1;origin=canvas.transformDocumentPoint(e.x,e.y);initial=Matrix(matrix);gestureBefore=Matrix(matrix);meshBefore=mesh.map{PointF(it.x,it.y)}
                 val radius=22*canvas.resources.displayMetrics.density/canvas.transformZoom;val q=if(mode=="Warp")mappedMesh()else mapped();handle=q.indices.minByOrNull{hypot(q[it].x-origin.x,q[it].y-origin.y)}?.takeIf{hypot(q[it].x-origin.x,q[it].y-origin.y)<=radius}?:-1

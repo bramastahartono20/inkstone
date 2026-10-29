@@ -1,0 +1,62 @@
+{
+  "apk": "inkstone-0.22-debug.apk",
+  "sha256": "42d34267b3e1ad294d1eb860fab4701f1ec01892b6e07efbff4445b8e13fa069",
+  "bytes": 10776625,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4393984,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1105400,
+          "alignment": 16384
+        },
+        {
+          "offset": 4255456,
+          "alignment": 16384
+        },
+        {
+          "offset": 4388704,
+          "alignment": 16384
+        }
+      ]
+    },
+    "x86_64": {
+      "bytes": 4983632,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1174768,
+          "alignment": 16384
+        },
+        {
+          "offset": 4834912,
+          "alignment": 16384
+        },
+        {
+          "offset": 4978304,
+          "alignment": 16384
+        }
+      ]
+    }
+  },
+  "static_checks_passed": true,
+  "android_tests": {
+    "tests": 137,
+    "failures": 0,
+    "errors": 0
+  },
+  "lint_errors": 0,
+  "lint_warnings": 132,
+  "version": "0.22",
+  "version_code": 35,
+  "user_tested_previous_local_build": true
+}

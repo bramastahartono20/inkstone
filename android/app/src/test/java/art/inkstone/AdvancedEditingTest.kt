@@ -213,7 +213,7 @@ class AdvancedEditingTest{
         command(s,"group",JSONObject().put("action","create").put("name","Inner"))
         command(s,"group",JSONObject().put("action","create").put("name","Outer").put("empty",true))
         layout(e,"nested-before");click(e,"Layers");until{named(e,"Group row Outer")!=null};layout(e,"nested-open")
-        click(e,"Toggle group Inner");layout(e,"nested-selected");assertNotNull(named(e,"Layer row Layer 1"))
+        (named(e,"Toggle group Inner")!!.parent as View).performClick();layout(e,"nested-selected");assertNotNull(named(e,"Layer row Layer 1"))
         val target=named(e,"Group row Outer")!!
         fun drop(action:Int){
             val method=DragEvent::class.java.declaredMethods.first{it.name=="obtain" && it.parameterTypes.size>1};method.isAccessible=true;var f=0

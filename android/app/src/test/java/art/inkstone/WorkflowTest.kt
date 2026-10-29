@@ -41,7 +41,7 @@ class WorkflowTest{
     }
     @Test fun symmetrySettingsPersistAndGenerateFourCopies(){
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(64,64);val e=a.editor!!;val s=a.session!!;render(e,"symmetry-before")
-        click(e,"Actions");click(e,"Canvas");click(e,"Symmetry");val dialog=ShadowAlertDialog.getLatestAlertDialog();dialog.listView.performItemClick(dialog.listView.getChildAt(3),3,3);shadowOf(Looper.getMainLooper()).idle();assertEquals("Quadrant",s.symmetryMode)
+        click(e,"Actions");click(e,"Canvas");click(e,"Symmetry");click(e,"Quadrant");assertEquals("Quadrant",s.symmetryMode)
         s.color=0xff20aa66.toInt();s.size=6f;s.pressureSize=0f;s.stroke(0,floatArrayOf(12f,18f,1f,0f));s.stroke(2,floatArrayOf());until{s.info.optInt("undo")==1 && s.bitmap.getPixel(52,46)==s.color};render(e,"symmetry-quadrant")
         a.newCanvas(64,64);assertEquals("Quadrant",a.session!!.symmetryMode);done(c)
     }
@@ -60,7 +60,7 @@ class WorkflowTest{
     @Test fun referenceImageMovesResizesPicksAndReopensInBothEditors(){
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(320,240);val e=a.editor!!;render(e,"reference-before");e.showReference();val panel=checkNotNull(named(e,"Reference image companion")) as ReferencePanel
         panel.setImage(Bitmap.createBitmap(100,100,Bitmap.Config.ARGB_8888).apply{eraseColor(0xff5577bb.toInt())});render(e,"reference-companion")
-        val image=checkNotNull(named(panel,"Reference image. Drag to pan and pinch to zoom."));click(panel,"Pick reference color");touch(image,MotionEvent.ACTION_DOWN,image.width/2f,image.height/2f);touch(image,MotionEvent.ACTION_UP,image.width/2f,image.height/2f);assertEquals(0xff5577bb.toInt(),a.session!!.color)
+        val image=checkNotNull(named(panel,"Reference image. Hold to pick a color. Drag to pan and pinch to zoom."));click(panel,"Pick reference color");touch(image,MotionEvent.ACTION_DOWN,image.width/2f,image.height/2f);touch(image,MotionEvent.ACTION_UP,image.width/2f,image.height/2f);assertEquals(0xff5577bb.toInt(),a.session!!.color)
         val header=checkNotNull(named(panel,"Move reference window"));val before=(panel.layoutParams as android.widget.FrameLayout.LayoutParams).leftMargin;touch(header,MotionEvent.ACTION_DOWN,20f,20f);touch(header,MotionEvent.ACTION_MOVE,120f,40f);touch(header,MotionEvent.ACTION_UP,120f,40f);assertTrue((panel.layoutParams as android.widget.FrameLayout.LayoutParams).leftMargin>before)
         val handle=checkNotNull(named(panel,"Resize reference window"));val width=panel.layoutParams.width;touch(handle,MotionEvent.ACTION_DOWN,5f,5f);touch(handle,MotionEvent.ACTION_MOVE,65f,65f);touch(handle,MotionEvent.ACTION_UP,65f,65f);assertTrue(panel.layoutParams.width>width)
         val path=File(a.filesDir,"references/${a.documentId}.png");until{path.exists()};click(panel,"Close reference");assertNull(named(e,"Reference image companion"));e.showReference();render(e,"reference-restored")
