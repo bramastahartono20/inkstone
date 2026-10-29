@@ -1,6 +1,10 @@
 # Known issues
 
-## Current preview12
+## Current 0.21
+
+The [0.21 release notes](RELEASE_0_21.md) and [bug-hunt report](BUG_HUNT_0_21.md) describe the current implementation. All 16 confirmed audit findings are fixed. Physical Android stylus/Vulkan performance, animation pacing and thermals remain unverified. Exterior storage is bounded and exports crop to the artboard; selections remain artboard-based. Raster folders can nest; Vector folders/stacks remain one level. Mixing is approximate and PSD group appearance may be baked. Older sections below preserve historical feedback.
+
+## Historical preview12
 
 Background colour uses a shared editor picker and selecting a color restores background visibility. Light interface uses shared panel/control colors. Multicolor uses an editor-owned panel. Canvas Atlas shares the editor camera and shows inactive documents as bounded previews. Group blend/opacity and personal brushes are available. Physical Android testing is still required for stylus behavior, Fade starts, drag timing, navigation feel and Vulkan performance. Wet mix is an approximation, isolated Raster group compositing uses CPU patches, and nondefault group appearance is baked to a single PSD layer. Atlas positions, gallery metadata and personal brush libraries stay device-local. Groups/stacks are one level. See [current release instructions](LOCAL_PREVIEW_019_12.md). Older sections below record historical feedback rather than the current inventory.
 

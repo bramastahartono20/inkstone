@@ -110,9 +110,13 @@ pub extern "system" fn Java_art_inkstone_NativeBridge_thumbnails(env:JNIEnv,_thi
 pub extern "system" fn Java_art_inkstone_NativeBridge_renderPatch(env:JNIEnv,_this:JObject,id:jlong,force:jboolean)->jintArray {
     let mut guard=engines().lock().unwrap();
     let Some(e)=guard.get_mut(&id) else{return std::ptr::null_mut();};
-    let Some(patch)=e.render_patch(force!=0) else{return std::ptr::null_mut();};
-    let Ok(array)=env.new_int_array(patch.len() as i32) else { e.dirty=true;return std::ptr::null_mut(); };
-    if env.set_int_array_region(&array,0,&patch).is_err(){e.dirty=true;return std::ptr::null_mut();}
+    if force!=0{e.exterior_dirty=true;}
+    let interior=e.render_patch(force!=0);let exterior=e.exterior_patch();
+    if interior.is_none() && exterior.is_none(){return std::ptr::null_mut();}
+    let mut patch=interior.unwrap_or_else(||vec![0,0,0,0]);
+    if let Some(exterior)=exterior{patch.extend(exterior);}
+    let Ok(array)=env.new_int_array(patch.len() as i32) else { e.dirty=true;e.exterior_dirty=true;return std::ptr::null_mut(); };
+    if env.set_int_array_region(&array,0,&patch).is_err(){e.dirty=true;e.exterior_dirty=true;return std::ptr::null_mut();}
     array.into_raw()
 }
 

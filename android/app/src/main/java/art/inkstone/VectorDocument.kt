@@ -114,7 +114,7 @@ internal class VectorDocument(val width:Int,val height:Int,val dpi:Int=300,var b
     }
     fun edit(change:()->Unit){val before=encode();try{change();consolidateGroups();refreshGroups();commit(before)}catch(e:Exception){restore(before);throw e}}
     fun commit(before:ByteArray){val after=encode();require(after.size<=MAX_BYTES){"Vector project is too large"}
-        require(layers.isNotEmpty() && active in layers.indices){"Invalid Vector layers"}
+        require(layers.isNotEmpty() && layers.size<=4096 && groups.size<=512 && active in layers.indices){"Invalid Vector layers"}
         require(layers.sumOf{it.objects.size}<=5000 && layers.sumOf{l->l.objects.sumOf{it.points.size}}<=250000){"Vector object/point limit reached"}
         for(layer in layers){require(layer.opacity.isFinite() && layer.opacity in 0f..1f)
             for(obj in layer.objects){require(obj.width.isFinite() && obj.width in .1f..1000f)
@@ -257,7 +257,7 @@ internal class VectorDocument(val width:Int,val height:Int,val dpi:Int=300,var b
             val w=json.getInt("width");val h=json.getInt("height");require(w in 16..8192 && h in 16..8192 && w.toLong()*h<=16_777_216){"Invalid canvas size"}
             val dpi=json.getInt("dpi");require(dpi in 1..2400)
             val doc=VectorDocument(w,h,dpi,json.getLong("background").toInt(),json.getBoolean("backgroundVisible"));val list=json.getJSONArray("layers")
-            require(list.length()>0);doc.layers.clear();val ids=HashSet<Long>();var points=0;var objects=0
+            require(list.length() in 1..4096){"Vector layer limit exceeded"};doc.layers.clear();val ids=HashSet<Long>();var points=0;var objects=0
             fun number(v:Double):Float{require(v.isFinite() && abs(v)<=1_000_000){"Invalid Vector coordinates"};return v.toFloat()}
             for(i in 0 until list.length()){val l=list.getJSONObject(i);val id=l.getLong("id");require(id in 1 until Long.MAX_VALUE-10000 && ids.add(id));
                 val opacity=number(l.getDouble("opacity"));require(opacity in 0f..1f)
@@ -273,7 +273,7 @@ internal class VectorDocument(val width:Int,val height:Int,val dpi:Int=300,var b
                     layer.objects.add(VectorObject(oid,kind,coords,o.getLong("stroke").toInt(),if(o.isNull("fill"))null else o.getLong("fill").toInt(),width,matrix,o.optBoolean("closed",false)))
                 };doc.layers.add(layer)
             }
-            val groups=json.optJSONArray("groups")?:JSONArray()
+            val groups=json.optJSONArray("groups")?:JSONArray();require(groups.length()<=512){"Vector group limit exceeded"}
             for(i in 0 until groups.length()){val g=groups.getJSONObject(i);val id=g.getLong("id");require(id in 1 until Long.MAX_VALUE-10000 && ids.add(id));doc.groups.add(VectorGroup(id,g.getString("name").take(100),g.optBoolean("visible",true),g.optBoolean("locked"),g.optBoolean("collapsed"),g.optDouble("opacity",1.0).toFloat().also{require(it.isFinite() && it in 0f..1f)},g.optString("blend","Pass Through").also{require(it in GroupAppearance.modes)}))}
             doc.refreshGroups()
             doc.active=json.getInt("active");require(doc.active in doc.layers.indices);doc.nextId=ids.max()+1;return doc

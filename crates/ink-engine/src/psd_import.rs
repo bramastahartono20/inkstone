@@ -419,7 +419,7 @@ impl Engine {
                         return Err("PSD exceeds the layer memory budget".into());
                     }
                     let id = layers.len() as u32 + 1;
-                    layers.push(Layer {group_id:None,group_visible:true,group_locked:false,
+                    layers.push(Layer {exterior:Default::default(),group_id:None,group_visible:true,group_locked:false,
                         id,
                         name: record.name,
                         visible: record.visible,

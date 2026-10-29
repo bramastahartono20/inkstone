@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
+mod exterior;
 mod transform;
 mod groups;
 mod liquify;
@@ -14,11 +15,13 @@ mod history;
 mod psd_import;
 
 const MAX_PIXELS: usize = 16_777_216;
+const MAX_LAYERS:usize=4096;
 const PIXEL_BUDGET: usize = 67_108_864;
 const HISTORY_BUDGET: usize = 96 * 1024 * 1024;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Layer {
+    #[serde(default)] pub exterior: std::collections::BTreeMap<i64,Arc<Vec<u32>>>,
     #[serde(default)] pub group_id:Option<u32>,
     #[serde(default="default_true")] pub group_visible:bool,
     #[serde(default)] pub group_locked:bool,
@@ -98,9 +101,11 @@ fn dab_spacing(brush: Brush) -> f32 {
 
 #[derive(Clone,Copy)]
 struct RecordedStamp {direction:[f32;2],sample:Sample,brush:Brush,distance:f32}
-struct Stroke {loaded_paint:Option<u32>,mix_distance:f32,direction:[f32;2], effects:brush_color::BrushColor, mask_before:Option<Arc<Vec<u8>>>, rect: [usize; 4], before: Vec<u32>, layer: usize, last: Sample, filtered: Sample, brush: Brush, seed: u32, smudge: Option<Vec<u32>>, pending: Vec<gpu::Dab>, gpu_paint: bool, distance_to_dab: f32, distance:f32, stamp_distance:f32,records:Vec<RecordedStamp>, replay_end:Option<f32>, input_time:Option<f32>, input_position:(f32,f32), speed:f32, moving:bool }
+struct Stroke {exterior_before:State, exterior_changed:bool,loaded_paint:Option<u32>,mix_distance:f32,direction:[f32;2], effects:brush_color::BrushColor, mask_before:Option<Arc<Vec<u8>>>, rect: [usize; 4], before: Vec<u32>, layer: usize, last: Sample, filtered: Sample, brush: Brush, seed: u32, smudge: Option<Vec<u32>>, pending: Vec<gpu::Dab>, gpu_paint: bool, distance_to_dab: f32, distance:f32, stamp_distance:f32,records:Vec<RecordedStamp>, replay_end:Option<f32>, input_time:Option<f32>, input_position:(f32,f32), speed:f32, moving:bool }
 
 pub struct Engine {
+    exterior_dirty:bool,
+    exterior_changed_tiles:std::collections::BTreeSet<i64>,
     gpu: Option<gpu::Gpu>,
     renderer_requested: String,
     renderer_error: Option<String>,
@@ -176,9 +181,9 @@ impl Engine {
             return Err("Canvas must be at least 16 × 16 and at most 16 megapixels".into());
         }
         let empty_pixels = Arc::new(vec![0; pixels]);
-        Ok(Self { gpu: None, renderer_requested: "cpu".into(), renderer_error: None, width, height, dpi:300, state: State { groups:vec![],layers: vec![Layer {group_id:None,group_visible:true,group_locked:false,
+        Ok(Self {exterior_changed_tiles:Default::default(),exterior_dirty:true,gpu: None, renderer_requested: "cpu".into(), renderer_error: None, width, height, dpi:300, state: State { groups:vec![],layers: vec![Layer {group_id:None,group_visible:true,group_locked:false,
             id: 1, name: "Layer 1".into(), visible: true, opacity: 1.0, blend: "Normal".into(),
-            alpha_lock: false, locked:false, clipping: false, mask:None,mask_enabled:true,pixels: empty_pixels.clone(),
+            alpha_lock: false, locked:false, clipping: false, mask:None,mask_enabled:true,pixels: empty_pixels.clone(),exterior:Default::default(),
         }], active: 0, background: 0xfffaf9f6, background_visible: true }, next_id: 2,mask_edit:false,brush_color:brush_color::BrushColor::default(),symmetry:"Off".into(),
             empty_pixels,input_error:None,history_directory:std::env::temp_dir(),history_error:None,undo: vec![], redo: vec![],undo_names:vec![],redo_names:vec![],action_name:"Edit artwork".into(),history_notice:String::new(), stroke: None,liquify:None, flood_preview: None, selection: None,selection_alpha:None,selection_base:None,selection_version:0,saved_selections:std::collections::BTreeMap::new(),clipboard:None, dirty: true, damage: None })
     }
@@ -201,7 +206,7 @@ impl Engine {
             let cost=match change {
                 Change::Structure{before,after}=>before.layers.iter().chain(after.layers.iter()).map(|l|{
                     let pixels=if seen.insert(Arc::as_ptr(&l.pixels) as usize){l.pixels.len()*4}else{0};
-                    pixels+l.mask.as_ref().map_or(0,|m|if seen.insert(Arc::as_ptr(m) as usize){m.len()}else{0})
+                    pixels+l.exterior.values().map(|t|if seen.insert(Arc::as_ptr(t) as usize){t.len()*4}else{0}).sum::<usize>()+l.mask.as_ref().map_or(0,|m|if seen.insert(Arc::as_ptr(m) as usize){m.len()}else{0})
                 }).sum(),
                 _=>change.bytes(),
             };costs.push(cost);
@@ -265,7 +270,7 @@ impl Engine {
                 }
             }
         }
-        self.dirty = true;
+        self.dirty = true;self.exterior_dirty=true;
     }
 
     fn history_step(&mut self,forward:bool)->bool {
@@ -314,7 +319,8 @@ impl Engine {
         brush=Self::normalize_brush(brush);
         let mask_before=if self.mask_edit {self.state.layers[self.state.active].mask.clone()}else{None};
         if mask_before.is_some() && (brush.kind==6 || brush.kind>=128){return;}
-        let mut stroke = Stroke {loaded_paint:None,mix_distance:0.0,direction:[1.0,0.0],effects:self.brush_color.clone(),mask_before:mask_before.clone(), rect: [self.width,self.height,0,0], before: if mask_before.is_some(){Vec::new()}else{self.state.layers[self.state.active].pixels.as_ref().clone()},
+        let mut exterior_before=self.state.clone();exterior_before.layers[self.state.active].pixels=self.empty_pixels.clone();
+        let mut stroke = Stroke {exterior_before,exterior_changed:false,loaded_paint:None,mix_distance:0.0,direction:[1.0,0.0],effects:self.brush_color.clone(),mask_before:mask_before.clone(), rect: [self.width,self.height,0,0], before: if mask_before.is_some(){Vec::new()}else{self.state.layers[self.state.active].pixels.as_ref().clone()},
             layer: self.state.active, last: p, filtered: p, brush, seed: 0x736561, smudge: None, pending: Vec::new(), gpu_paint: brush.size>=32.0 && mask_before.is_none() && self.brush_color.mix==0.0, distance_to_dab: dab_spacing(brush), distance:0.0,stamp_distance:0.0,records:vec![],replay_end:None,input_time:None,input_position:(p.x,p.y),speed:0.0,moving:false };
         if stroke.gpu_paint { if let Some(gpu)=&mut self.gpu { gpu.selection(self.selection.as_deref(),self.selection_alpha.as_deref()); } }
         if brush.fade_length==0.0{self.stamp(p, &mut stroke);}
@@ -433,6 +439,8 @@ impl Engine {
         let y0 = ((p.y - radius - 1.0).floor().max(0.0) as usize).min(self.height);
         let x1 = ((p.x + radius + 1.0).ceil().max(0.0) as usize).min(self.width);
         let y1 = ((p.y + radius + 1.0).ceil().max(0.0) as usize).min(self.height);
+        let crosses=p.x-radius<0.0 || p.y-radius<0.0 || p.x+radius>=self.width as f32 || p.y+radius>=self.height as f32;
+        if crosses && stroke.gpu_paint {self.flush_stroke(stroke);stroke.gpu_paint=false;}
         if self.gpu.is_some() && stroke.gpu_paint {
             let smudging=brush.kind==6 || brush.kind>=128;
             let initial=smudging && stroke.smudge.is_none();
@@ -448,6 +456,7 @@ impl Engine {
             if !initial { stroke.seed=stroke.seed.wrapping_add(1); }
             return;
         }
+        let mut exterior_count=self.state.layers.iter().map(|l|l.exterior.len()).sum::<usize>();
         let selected = &self.selection;
         let selection_alpha=&self.selection_alpha;
         let layer = &mut self.state.layers[stroke.layer];
@@ -460,9 +469,7 @@ impl Engine {
             for gy in 0..32 {for gx in 0..32 {
                 let sx=(p.x+((gx as f32+0.5)/16.0-1.0)*radius).floor() as i32;
                 let sy=(p.y+((gy as f32+0.5)/16.0-1.0)*radius).floor() as i32;
-                if sx>=0 && sy>=0 && sx<self.width as i32 && sy<self.height as i32 {
-                    tip[gy*32+gx]=layer.pixels[sy as usize*self.width+sx as usize];
-                }
+                tip[gy*32+gx]=layer.pixel_at(sx,sy,self.width,self.height);
             }}
             stroke.smudge=Some(tip);return;
         }
@@ -470,16 +477,21 @@ impl Engine {
         let pickup=if smudging {let mut tip=vec![0;1024];for gy in 0..32 {for gx in 0..32 {
             let sx=(p.x+((gx as f32+0.5)/16.0-1.0)*radius).floor() as i32;
             let sy=(p.y+((gy as f32+0.5)/16.0-1.0)*radius).floor() as i32;
-            if sx>=0 && sy>=0 && sx<self.width as i32 && sy<self.height as i32 {tip[gy*32+gx]=layer.pixels[sy as usize*self.width+sx as usize];}
+            tip[gy*32+gx]=layer.pixel_at(sx,sy,self.width,self.height);
         }}Some(tip)}else{None};
         let mask_edit=stroke.mask_before.is_some();
         let mask=if mask_edit{Some(Arc::make_mut(layer.mask.as_mut().unwrap()))}else{None};
         let mut mask=mask;
         let mut pixels=if mask_edit{None}else{Some(Arc::make_mut(&mut layer.pixels))};
         let strength = brush.opacity * brush.flow * (1.0 - brush.pressure_opacity + brush.pressure_opacity * pressure);
-        for y in y0..y1 { for x in x0..x1 {
-            let idx = y * self.width + x;
-            if selected.as_ref().is_some_and(|s| !s[idx]) { continue; }
+        let margin=2048i32;
+        let bx0=(p.x-radius-1.0).floor().max(-margin as f32) as i32;let by0=(p.y-radius-1.0).floor().max(-margin as f32) as i32;
+        let bx1=(p.x+radius+1.0).ceil().min(self.width as f32+margin as f32) as i32;let by1=(p.y+radius+1.0).ceil().min(self.height as f32+margin as f32) as i32;
+        for y in by0..by1 { for x in bx0..bx1 {
+            let inside=x>=0 && y>=0 && x<self.width as i32 && y<self.height as i32;
+            if !inside && (mask_edit || selected.is_some() || lock || layer.clipping){continue;}
+            let idx=if inside{y as usize*self.width+x as usize}else{0};
+            if inside && selected.as_ref().is_some_and(|s| !s[idx]) { continue; }
             let dx = x as f32 + 0.5 - p.x; let dy = y as f32 + 0.5 - p.y;
             let d = dx.hypot(dy) / radius.max(0.1);
             if d > 1.0 + 0.7 / radius { continue; }
@@ -518,8 +530,16 @@ impl Engine {
                 let target=if brush.kind==5 || (16..=31).contains(&brush.kind) || (64..=78).contains(&brush.kind){0.0}else{(channel(color,16)*0.2126+channel(color,8)*0.7152+channel(color,0)*0.0722)*255.0};
                 mask[idx]=(mask[idx] as f32*(1.0-alpha)+target*alpha+0.5) as u8;continue;
             }
-            let pixels=pixels.as_mut().unwrap();
-            let dst = pixels[idx];
+            let cell=if inside{&mut pixels.as_mut().unwrap()[idx]}else{
+                let key=exterior::key(x.div_euclid(128),y.div_euclid(128));
+                if !layer.exterior.contains_key(&key) && (alpha<=0.0 || smudging || brush.kind>=64){continue;}
+                if !layer.exterior.contains_key(&key) && (layer.exterior.len()>=256 || exterior_count>=1024){self.input_error=Some("Off-canvas storage is full on this layer".into());continue;}
+                stroke.exterior_changed=true;self.exterior_changed_tiles.insert(key);
+                if !layer.exterior.contains_key(&key){exterior_count+=1;}
+                let tile=layer.exterior.entry(key).or_insert_with(||Arc::new(vec![0;128*128]));
+                &mut Arc::make_mut(tile)[y.rem_euclid(128) as usize*128+x.rem_euclid(128) as usize]
+            };
+            let dst = *cell;
             if smudging {
                 let carried=sample_tip(stroke.smudge.as_ref().unwrap(),(dx/radius+1.0)*16.0-0.5,(dy/radius+1.0)*16.0-0.5);
                 let mask=match shape {
@@ -529,17 +549,17 @@ impl Engine {
                     _=>edge,
                 };
                 let mixed=mix_rgba(dst,carried,(strength*mask*0.32*selection_alpha.as_ref().map_or(1.0,|a|a[idx] as f32/255.0)).clamp(0.0,1.0));
-                pixels[idx]=if lock {(mixed&0xffffff)|(dst&0xff000000)}else{mixed};
+                *cell=if lock {(mixed&0xffffff)|(dst&0xff000000)}else{mixed};
             } else if brush.kind == 5 || (16..=31).contains(&brush.kind) || (64..=78).contains(&brush.kind) {
                 if lock { continue; }
                 let a = channel(dst, 24) * (1.0 - alpha);
-                pixels[idx] = (dst & 0x00ffffff) | (((a * 255.0).round() as u32) << 24);
+                *cell = (dst & 0x00ffffff) | (((a * 255.0).round() as u32) << 24);
             } else if lock {
                 if dst >> 24 != 0 {
                     let c = composite(dst | 0xff000000, color | 0xff000000, alpha, "Normal");
-                    pixels[idx] = (c & 0x00ffffff) | (dst & 0xff000000);
+                    *cell = (c & 0x00ffffff) | (dst & 0xff000000);
                 }
-            } else { pixels[idx] = composite(dst, color, alpha, "Normal"); }
+            } else { *cell = composite(dst, color, alpha, "Normal"); }
         }}
         if let (Some(tip),Some(pickup))=(&mut stroke.smudge,pickup){
             for (carried,local) in tip.iter_mut().zip(pickup){*carried=mix_rgba(*carried,local,0.08);}
@@ -604,6 +624,8 @@ impl Engine {
             if s.distance>0.01 && s.records.iter().any(|r|r.brush.fade_length>0.0) {
                 if let Some(mask)=&s.mask_before{self.state.layers[s.layer].mask=Some(mask.clone());}
                 else{self.state.layers[s.layer].pixels=Arc::new(s.before.clone());}
+                self.state.layers[s.layer].exterior=s.exterior_before.layers[s.layer].exterior.clone();
+                if s.exterior_changed{self.exterior_dirty=true;}
                 s.replay_end=Some(s.distance);s.seed=0x736561;s.smudge=None;s.loaded_paint=None;s.mix_distance=0.0;
                 let records=std::mem::take(&mut s.records);
                 for record in records {
@@ -618,12 +640,15 @@ impl Engine {
             let was_dirty = self.dirty;
             if let Some(before)=s.mask_before{
                 self.record_mask(s.layer,&before,s.rect);
+            }else if s.exterior_changed {
+                let mut before=s.exterior_before;before.layers[s.layer].pixels=Arc::new(s.before);
+                self.record(Change::Structure{before,after:self.state.clone()});
             }else{self.pixel_change_rect(s.layer, s.before, s.rect);}
             self.dirty = was_dirty;
         }
     }
     pub fn cancel(&mut self) {
-        if let Some(s) = self.stroke.take() { if let Some(mask)=s.mask_before{self.state.layers[s.layer].mask=Some(mask);}else{self.state.layers[s.layer].pixels=Arc::new(s.before);} self.dirty = true; }
+        if let Some(s) = self.stroke.take() { if let Some(mask)=s.mask_before{self.state.layers[s.layer].mask=Some(mask);}else{self.state.layers[s.layer].pixels=Arc::new(s.before);self.state.layers[s.layer].exterior=s.exterior_before.layers[s.layer].exterior.clone();} self.dirty = true;self.exterior_dirty=true; }
     }
 
     fn compositing_layers(&self)->Vec<Layer>{
@@ -640,23 +665,8 @@ impl Engine {
     }
     fn color_at_layers(&self,x:usize,y:usize,background:bool,layers:&[Layer])->u32 {
         let idx = y.min(self.height - 1) * self.width + x.min(self.width - 1);
-        let mut c = if background && self.state.background_visible { self.state.background } else { 0 };
-        let mut base_alpha = 0.0;
-        let mut group_color=0;let mut isolated:Option<&LayerGroup>=None;
-        for l in layers {
-            let next=l.group_id.and_then(|id|self.state.groups.iter().find(|g|g.id==id)).filter(|g|g.blend!="Pass Through" || g.opacity<1.0);
-            if isolated.map(|g|g.id)!=next.map(|g|g.id){
-                if let Some(g)=isolated{c=composite(c,group_color,g.opacity,if g.blend=="Pass Through"{"Normal"}else{&g.blend});}
-                isolated=next;group_color=0;base_alpha=0.0;
-            }
-            if !l.clipping { base_alpha = if l.is_visible() { channel(l.pixels[idx], 24)*l.mask_coverage(idx) } else { 0.0 }; }
-            if !l.is_visible() { continue; }
-            let opacity = l.opacity * l.mask_coverage(idx) * if l.clipping { base_alpha } else { 1.0 };
-            if isolated.is_some(){group_color=composite(group_color,l.pixels[idx],opacity,&l.blend);}
-            else{c = composite(c, l.pixels[idx], opacity, &l.blend);}
-        }
-        if let Some(g)=isolated{c=composite(c,group_color,g.opacity,if g.blend=="Pass Through"{"Normal"}else{&g.blend});}
-        c
+        let c=if background && self.state.background_visible{self.state.background}else{0};
+        self.composite_grouped(layers,c,|l|(l.pixels[idx],l.mask_coverage(idx)))
     }
 
     pub fn render(&mut self, bytes: &mut [u8], background: bool) -> bool {
@@ -716,28 +726,31 @@ impl Engine {
         let mut seen=std::collections::HashSet::new();
         layers.iter().map(|l|{
             let pixels=if seen.insert(Arc::as_ptr(&l.pixels) as usize){l.pixels.len()*4}else{0};
-            pixels+l.mask.as_ref().map_or(0,|m|if seen.insert(Arc::as_ptr(m) as usize){m.len()}else{0})
+            pixels+l.exterior.values().map(|t|if seen.insert(Arc::as_ptr(t) as usize){t.len()*4}else{0}).sum::<usize>()+l.mask.as_ref().map_or(0,|m|if seen.insert(Arc::as_ptr(m) as usize){m.len()}else{0})
         }).sum()
     }
     fn ensure_edit_capacity(&self)->Result<(),String>{
         let active=&self.state.layers[self.state.active];
         let shared=self.state.layers.iter().enumerate().any(|(i,l)|i!=self.state.active && Arc::ptr_eq(&l.pixels,&active.pixels));
-        if shared && !self.can_add(){return Err("Canvas memory is full. Merge painted layers or use a smaller canvas to continue drawing.".into());}
+        if shared && Self::layer_bytes(&self.state.layers)+self.width*self.height*4>PIXEL_BUDGET*4{return Err("Canvas memory is full. Merge painted layers or use a smaller canvas to continue drawing.".into());}
         Ok(())
     }
-    fn can_add(&self) -> bool { Self::layer_bytes(&self.state.layers)+self.width*self.height*4<=PIXEL_BUDGET*4 }
+    fn can_add(&self) -> bool { self.state.layers.len()<MAX_LAYERS && Self::layer_bytes(&self.state.layers)+self.width*self.height*4<=PIXEL_BUDGET*4 }
 
 
     pub fn command(&mut self, v: &Value) -> Result<Value, String> {
         let op = v["op"].as_str().ok_or("Missing operation")?;
-        if !op.starts_with("liquify") && !matches!(op,"info"|"pick"|"selectionPreview"){self.finish_liquify(false);}
-        if !matches!(op,"info"|"pick"|"selectionPreview"){self.end();}else if op=="pick"{self.flush_gpu();}
-        if self.flood_preview.is_some() && !matches!(op,"floodPreview"|"floodCommit"|"floodCancel"|"info"|"pick"|"selectionPreview") {
+        if op=="exteriorPreview"{return Ok(self.exterior_preview());}
+        if !matches!(op,"info"|"pick"|"selectionPreview"|"brushEffects"){self.exterior_dirty=true;}
+        if !op.starts_with("liquify") && !matches!(op,"info"|"pick"|"selectionPreview"|"exteriorPreview"){self.finish_liquify(false);}
+        if !matches!(op,"info"|"pick"|"selectionPreview"|"exteriorPreview"){self.end();}else if op=="pick"{self.flush_gpu();}
+        if self.flood_preview.is_some() && !matches!(op,"floodPreview"|"floodCommit"|"floodCancel"|"info"|"pick"|"selectionPreview"|"exteriorPreview") {
             self.cancel_flood();
         }
         let index = v["index"].as_u64().unwrap_or(self.state.active as u64) as usize;
         let n = |key: &str, default: f32| finite(v[key].as_f64().unwrap_or(default as f64) as f32, default);
-        if self.state.layers[self.state.active].is_locked() && matches!(op,"clear"|"fill"|"flood"|"floodPreview"|"adjust"|"transform"|"transformMatrix"|"transformProjective"|"transformMesh"|"selectionClear"|"selectionFill"|"selectionCut"|"delete"|"merge") {
+        if op=="delete"{if index>=self.state.layers.len(){return Err("Layer no longer exists".into());}if self.state.layers[index].is_locked(){return Err("This layer is locked".into());}}
+        if self.state.layers[self.state.active].is_locked() && matches!(op,"clear"|"fill"|"flood"|"floodPreview"|"adjust"|"transform"|"transformMatrix"|"transformProjective"|"transformMesh"|"selectionClear"|"selectionFill"|"selectionCut"|"merge") {
             return Err("This layer is locked. Swipe left and choose Unlock to edit it.".into());
         }
         if op=="merge" && self.state.active>0 && self.state.layers[self.state.active-1].is_locked() {return Err("The layer below is locked".into());}
@@ -746,7 +759,7 @@ impl Engine {
         self.action_name=match op{
             "add"=>"Create layer","duplicate"=>"Duplicate layer","delete"=>"Delete layer","merge"=>"Merge layers","layer"=>"Change layer settings","reorder"|"moveLayer"=>"Move layer",
             "flood"|"floodCommit"=>"ColorDrop","fill"=>"Fill layer","clear"=>"Clear layer","background"=>"Change background","adjust"=>"Image adjustment",
-            "transform"|"transformMatrix"|"transformProjective"|"transformMesh"=>"Transform","mask"=>"Edit layer mask","group"=>"Edit layer group",
+            "transform"|"transformMatrix"|"transformProjective"|"transformMesh"=>"Transform","mask"=>"Edit layer mask","group"=>if v["action"]=="move"{"Move layer group"}else{"Edit layer group"},
             "selectionFill"=>"Fill selection","selectionClear"=>"Clear selection","selectionCut"=>"Cut selection","selectionPaste"|"selectionCopyPaste"=>"Paste selection","liquifyCommit"=>"Liquify",_=>"Edit artwork"
         }.into();
         if op.starts_with("liquify"){self.liquify_command(v)?;return Ok(self.info());}
@@ -771,22 +784,31 @@ impl Engine {
             "mask"=>self.mask_command(v)?,
             "symmetry"=>{let mode=v["mode"].as_str().unwrap_or("Off");if !matches!(mode,"Off"|"Vertical"|"Horizontal"|"Quadrant"|"Radial 4"){return Err("Unsupported symmetry mode".into());}self.symmetry=mode.into();},
             "add" | "duplicate" => {
+                if self.state.layers.len()>=MAX_LAYERS{return Err("Layer metadata limit reached".into());}
+                if op=="duplicate" && index>=self.state.layers.len(){return Err("Layer no longer exists".into());}
+                if op=="duplicate" && self.state.layers.iter().map(|l|l.exterior.len()).sum::<usize>()+self.state.layers[index].exterior.len()>1024{return Err("Duplicate exceeds off-canvas storage capacity".into());}
+                if op=="add" && !self.state.layers.iter().any(|l|Arc::ptr_eq(&l.pixels,&self.empty_pixels)) && Self::layer_bytes(&self.state.layers)+self.width*self.height*4>PIXEL_BUDGET*4{return Err("Canvas memory budget is full".into());}
                 if self.next_id==u32::MAX {return Err("Layer identifiers exhausted".into());}
                 self.mask_edit=false;
                 self.structure(|e| {
                     let id = e.next_id; e.next_id += 1;
+                    let source=if op=="duplicate"{index}else{e.state.active};
                     let l = if op == "duplicate" {
-                        let mut l = e.state.layers[e.state.active].clone(); l.id = id; l.name += " copy"; l
-                    } else { Layer { group_id:e.state.layers[e.state.active].group_id,group_visible:e.state.layers[e.state.active].group_visible,group_locked:e.state.layers[e.state.active].group_locked,id, name: format!("Layer {}", id), visible:true, opacity:1.0,
+                        let mut l = e.state.layers[source].clone(); l.id = id; l.name += " copy"; l
+                    } else { Layer { exterior:Default::default(),group_id:e.state.layers[e.state.active].group_id,group_visible:e.state.layers[e.state.active].group_visible,group_locked:e.state.layers[e.state.active].group_locked,id, name: format!("Layer {}", id), visible:true, opacity:1.0,
                         blend:"Normal".into(), alpha_lock:false, locked:false, clipping:false,
                         mask:None,mask_enabled:true,pixels:e.empty_pixels.clone() } };
-                    e.state.active += 1; e.state.layers.insert(e.state.active, l);
+                    e.state.active = source+1; e.state.layers.insert(e.state.active, l);
                 });
             },
             "delete" => {
                 if self.state.layers.len() <= 1 { return Err("Keep at least one layer; use Clear instead".into()); }
                 self.mask_edit=false;
-                self.structure(|e| { e.state.layers.remove(e.state.active); e.state.active = e.state.active.saturating_sub(1); });
+                self.structure(|e| {
+                    let active=e.state.layers[e.state.active].id;let deleted=e.state.layers[index].id;let next=e.state.layers.get(index+1).map(|l|l.id);
+                    for g in &mut e.state.groups{if g.anchor_id==Some(deleted){g.anchor_id=next;}}
+                    e.state.layers.remove(index);e.state.active=e.state.layers.iter().position(|l|l.id==active).unwrap_or(index.saturating_sub(1).min(e.state.layers.len()-1));e.state.layers[0].clipping=false;e.normalize_groups();
+                });
             },
             "layer" => {
                 if index >= self.state.layers.len() { return Err("Layer no longer exists".into()); }
@@ -813,24 +835,28 @@ impl Engine {
                 if let Some(c) = v["color"].as_u64() { e.state.background = c as u32 | 0xff000000; }
                 if let Some(b) = v["visible"].as_bool() { e.state.background_visible = b; }
             }),
-            "flipCanvas" => self.structure(|e| {
-                let horizontal = v["horizontal"].as_bool().unwrap_or(true);
-                for layer in &mut e.state.layers {
-                    if let Some(mask)=layer.mask.as_mut(){let mask=Arc::make_mut(mask);if horizontal{for row in mask.chunks_exact_mut(e.width){row.reverse();}}else{for y in 0..e.height/2{for x in 0..e.width{mask.swap(y*e.width+x,(e.height-y-1)*e.width+x);}}}}
-                    let pixels = Arc::make_mut(&mut layer.pixels);
-                    if horizontal {
-                        for row in pixels.chunks_exact_mut(e.width) { row.reverse(); }
-                    } else {
-                        for y in 0..e.height / 2 { for x in 0..e.width {
-                            pixels.swap(y * e.width + x, (e.height - y - 1) * e.width + x);
-                        }}
-                    }
+            "flipCanvas" => {
+                let horizontal=v["horizontal"].as_bool().unwrap_or(true);
+                if Self::layer_bytes(&self.state.layers)*2>PIXEL_BUDGET*4{return Err("Not enough canvas memory to flip this artwork".into());}
+                let mut cache=std::collections::HashMap::new();let mut layers=Vec::new();let mut memory=Self::layer_bytes(&self.state.layers);
+                for l in &self.state.layers{
+                    let key=(Arc::as_ptr(&l.pixels) as usize,l.mask.as_ref().map(|m|Arc::as_ptr(m) as usize),l.exterior.iter().map(|(k,v)|(*k,Arc::as_ptr(v) as usize)).collect::<Vec<_>>());
+                    let geometry=if let Some(g)=cache.get(&key){Layer::clone(g)}else{
+                        let extra=if Arc::ptr_eq(&l.pixels,&self.empty_pixels){0}else{self.width*self.height*4}+l.mask.as_ref().map_or(0,|m|m.len())+(l.exterior.len()*4).min(256)*128*128*4;
+                        if memory+extra>PIXEL_BUDGET*4{return Err("Not enough canvas memory to flip this artwork".into());}memory+=extra;
+                        let mapped=l.remapped(self.width,self.height,&self.empty_pixels,|x,y|if horizontal{(self.width as i32-1-x,y)}else{(x,self.height as i32-1-y)})?;cache.insert(key,mapped.clone());mapped
+                    };
+                    let mut layer=l.clone();layer.pixels=geometry.pixels;layer.mask=geometry.mask;layer.exterior=geometry.exterior;layers.push(layer);
                 }
-                e.set_selection(None);
-            }),
+                if layers.iter().map(|l|l.exterior.len()).sum::<usize>()>1024{return Err("Flip exceeds off-canvas storage capacity".into());}
+                self.structure(|e|{e.state.layers=layers;e.set_selection(None);});
+            },
             "clear" | "fill" if self.mask_edit && self.state.layers[self.state.active].mask.is_some()=>{
                 let value=if op=="clear"{255}else{let c=v["color"].as_u64().unwrap_or(0xffffffff) as u32;((channel(c,16)*0.2126+channel(c,8)*0.7152+channel(c,0)*0.0722)*255.0+0.5) as u8};
                 self.structure(|e|{let m=Arc::make_mut(e.state.layers[e.state.active].mask.as_mut().unwrap());for(i,p)in m.iter_mut().enumerate(){if e.selection.as_ref().is_none_or(|s|s[i]){*p=value;}}});
+            },
+            "clear" if self.selection.is_none() && !self.state.layers[self.state.active].exterior.is_empty()=>{
+                self.structure(|e|{let l=&mut e.state.layers[e.state.active];l.exterior.clear();l.pixels=e.empty_pixels.clone();});
             },
             "clear" | "fill" => {
                 let before = self.state.layers[self.state.active].pixels.as_ref().clone();
@@ -848,6 +874,9 @@ impl Engine {
             "merge" => {
                 let a = self.state.active;
                 if a == 0 { return Err("There is no layer below this one".into()); }
+                if self.state.layers[a].group_id!=self.state.layers[a-1].group_id{return Err("Move layers into the same group before merging".into());}
+                let tiles=self.state.layers[a].exterior.keys().chain(self.state.layers[a-1].exterior.keys()).collect::<std::collections::HashSet<_>>().len();
+                if tiles>256{return Err("Merged layer exceeds off-canvas storage capacity".into());}
                 if self.state.layers[a].mask.is_some() || self.state.layers[a-1].mask.is_some(){return Err("Apply layer masks before merging".into());}
                 if self.state.layers[a].clipping || self.state.layers[a - 1].clipping
                     || self.state.layers[a].blend != "Normal" || self.state.layers[a - 1].blend != "Normal"
@@ -857,7 +886,8 @@ impl Engine {
                 self.structure(|e| {
                     let top = e.state.layers.remove(a);
                     let bottom = &mut e.state.layers[a - 1];
-                    if !bottom.visible { Arc::make_mut(&mut bottom.pixels).fill(0); }
+                    if !bottom.visible { Arc::make_mut(&mut bottom.pixels).fill(0);bottom.exterior.clear(); }
+                    if top.visible{for(key,tile)in &top.exterior{let dst=bottom.exterior.entry(*key).or_insert_with(||Arc::new(vec![0;128*128]));for(d,s)in Arc::make_mut(dst).iter_mut().zip(tile.iter()){*d=composite(*d,*s,top.opacity,"Normal");}}}
                     if top.visible { for (d, s) in Arc::make_mut(&mut bottom.pixels).iter_mut().zip(top.pixels.iter()) {
                         *d = composite(*d, *s, top.opacity, "Normal");
                     }}
@@ -929,7 +959,7 @@ impl Engine {
                 let mut m=[0.0;6];for (i,value) in values.iter().enumerate(){m[i]=value.as_f64().ok_or("Invalid affine value")? as f32;}
                 self.transform_affine(m)?;
             },
-            "transform" => {if self.state.layers[self.state.active].mask.is_some(){let b=self.transform_bounds(true,self.state.active);let x=(b[0]+b[2]) as f32/2.0;let y=(b[1]+b[3]) as f32/2.0;let(sn,cs)=n("angle",0.0).sin_cos();let a=cs*n("sx",1.0);let c=-sn*n("sy",1.0);let bb=sn*n("sx",1.0);let d=cs*n("sy",1.0);self.transform_affine([a,bb,c,d,x+n("dx",0.0)-a*x-c*y,y+n("dy",0.0)-bb*x-d*y])?;}else{self.transform(n("dx",0.0),n("dy",0.0),n("sx",1.0),n("sy",1.0),n("angle",0.0));}},
+            "transform" => {if self.state.layers[self.state.active].mask.is_some() || !self.state.layers[self.state.active].exterior.is_empty(){let b=self.transform_extent(true,self.state.active);let x=(b[0]+b[2]) as f32/2.0;let y=(b[1]+b[3]) as f32/2.0;let(sn,cs)=n("angle",0.0).sin_cos();let a=cs*n("sx",1.0);let c=-sn*n("sy",1.0);let bb=sn*n("sx",1.0);let d=cs*n("sy",1.0);self.transform_affine([a,bb,c,d,x+n("dx",0.0)-a*x-c*y,y+n("dy",0.0)-bb*x-d*y])?;}else{self.transform(n("dx",0.0),n("dy",0.0),n("sx",1.0),n("sy",1.0),n("angle",0.0));}},
             _ => return Err(format!("Unknown operation: {}",op)),
         }
         Ok(self.info())
@@ -1026,7 +1056,7 @@ impl Engine {
         let before=self.state.layers[self.state.active].pixels.as_ref().clone();
         let data=Arc::make_mut(&mut self.state.layers[self.state.active].pixels);
         let scale=(self.width as f32/width as f32).min(self.height as f32/height as f32).min(1.0);
-        let (dw,dh)=((width as f32*scale) as usize,(height as f32*scale) as usize);
+        let (dw,dh)=(((width as f32*scale).round() as usize).clamp(1,self.width),((height as f32*scale).round() as usize).clamp(1,self.height));
         let (dx,dy)=((self.width-dw)/2,(self.height-dh)/2);
         for y in 0..dh {for x in 0..dw {data[(y+dy)*self.width+x+dx]=pixels[((y as f32/scale) as usize).min(height-1)*width+((x as f32/scale) as usize).min(width-1)];}}
         self.state.layers[self.state.active].name="Inserted image".into();
@@ -1035,21 +1065,24 @@ impl Engine {
 
     pub fn save(&mut self)->Result<Vec<u8>,String> {
         self.flush_gpu();
-        let doc=SavedDocument {groups:self.state.groups.clone(),selections:self.saved_selections.clone(),version:if !self.state.groups.is_empty(){3}else if self.state.layers.iter().any(|l|l.mask.is_some()){2}else{1},width:self.width,height:self.height,active:self.state.active,
+        let doc=SavedDocument {groups:self.state.groups.clone(),selections:self.saved_selections.clone(),version:if self.state.groups.iter().any(|g|g.parent_id.is_some() || g.anchor_id.is_some()){5}else if self.state.layers.iter().any(|l|!l.exterior.is_empty()){4}else if !self.state.groups.is_empty(){3}else if self.state.layers.iter().any(|l|l.mask.is_some()){2}else{1},width:self.width,height:self.height,active:self.state.active,
             dpi:self.dpi,background:self.state.background,background_visible:self.state.background_visible,
-            layers:self.state.layers.iter().map(|l| SavedLayer {group_id:l.group_id,id:l.id,name:l.name.clone(),visible:l.visible,
+            layers:self.state.layers.iter().map(|l| SavedLayer {exterior:exterior::encode(&l.exterior),group_id:l.group_id,id:l.id,name:l.name.clone(),visible:l.visible,
                 opacity:l.opacity,blend:l.blend.clone(),alpha_lock:l.alpha_lock,locked:l.locked,clipping:l.clipping,mask_enabled:l.mask_enabled,mask:l.mask.as_ref().map(|m|encode_mask_runs(m)),runs:if Arc::ptr_eq(&l.pixels,&self.empty_pixels) && self.flood_preview.is_none(){vec![((self.width*self.height) as u32,0)]}else{encode_runs(if let Some((index,before))=&self.flood_preview {if self.state.layers[*index].id==l.id {before}else{&l.pixels}}else{&l.pixels})}}).collect()};
         serde_json::to_vec(&doc).map_err(|e|e.to_string())
     }
     pub fn load(bytes:&[u8])->Result<Self,String> {
         if bytes.len()>128*1024*1024 {return Err("Document is too large".into());}
         let doc:SavedDocument=serde_json::from_slice(bytes).map_err(|_|"This is not a supported Inkstone document")?;
-        if !matches!(doc.version,1|2|3) {return Err("Unsupported document version".into());}
+        if !matches!(doc.version,1|2|3|4|5) {return Err("Unsupported document version".into());}
+        doc.validate_decode_budget()?;
         let mut e=Self::new(doc.width,doc.height)?;
         if doc.layers.is_empty() || doc.active>=doc.layers.len() {return Err("Invalid layer count".into());}
         let mut layers=vec![]; let mut ids=std::collections::HashSet::new();
         let mut pixel_cache=std::collections::HashMap::new();
+        let mut exterior_count=0usize;
         for l in doc.layers {
+            exterior_count+=l.exterior.len();if exterior_count>1024{return Err("Off-canvas storage exceeds document budget".into());}
             if !ids.insert(l.id) || l.id==u32::MAX || !l.opacity.is_finite() {return Err("Invalid layer metadata".into());}
             let pixels=if l.runs.iter().all(|r|r.1==0) {
                 if l.runs.iter().any(|r|r.0==0) || l.runs.iter().map(|r|r.0 as usize).sum::<usize>()!=doc.width*doc.height{return Err("Invalid empty layer".into());}
@@ -1059,19 +1092,25 @@ impl Engine {
                 let pixels=Arc::new(decode_runs(&l.runs,doc.width*doc.height)?);
                 pixel_cache.insert(l.runs.clone(),pixels.clone());pixels
             };
-            layers.push(Layer{group_id:l.group_id,group_visible:true,group_locked:false,id:l.id,name:l.name.chars().take(100).collect(),visible:l.visible,opacity:l.opacity.clamp(0.0,1.0),
-                blend:l.blend,alpha_lock:l.alpha_lock,locked:l.locked,clipping:l.clipping,mask_enabled:l.mask_enabled,mask:match l.mask{Some(runs)=>{let values=decode_runs(&runs,doc.width*doc.height)?;if values.iter().any(|n|*n>255){return Err("Invalid layer mask".into());}Some(Arc::new(values.into_iter().map(|n|n as u8).collect()))},None=>None},pixels});
+            layers.push(Layer{exterior:exterior::decode(l.exterior)?,group_id:l.group_id,group_visible:true,group_locked:false,id:l.id,name:l.name.chars().take(100).collect(),visible:l.visible,opacity:l.opacity.clamp(0.0,1.0),
+                blend:l.blend,alpha_lock:l.alpha_lock,locked:l.locked,clipping:l.clipping,mask_enabled:l.mask_enabled,mask:match l.mask{Some(runs)=>Some(Arc::new(decode_mask_runs(&runs,doc.width*doc.height)?)),None=>None},pixels});
         }
+        if layers.iter().map(|l|l.exterior.len()).sum::<usize>()>1024{return Err("Off-canvas storage exceeds document budget".into());}
         if Self::layer_bytes(&layers)>PIXEL_BUDGET*4{return Err("Document masks exceed the layer memory budget".into());}
         if doc.selections.values().map(|r|r.len()*8).sum::<usize>()>32*1024*1024{return Err("Saved selections exceed document budget".into());}
-        for runs in doc.selections.values(){let values=decode_runs(runs,doc.width*doc.height)?;if values.iter().any(|v|*v>255){return Err("Invalid saved selection".into());}}
+        for runs in doc.selections.values(){validate_runs(runs,doc.width*doc.height,255)?;}
         e.saved_selections=doc.selections;
         e.dpi=doc.dpi.clamp(1,2400);
         e.next_id=layers.iter().map(|l|l.id).max().unwrap()+1;
         let mut group_ids=std::collections::HashSet::new();
-        if doc.groups.len()>512 || doc.groups.iter().any(|g|g.id==0 || !group_ids.insert(g.id) || g.name.len()>400 || !g.opacity.is_finite() || !(0.0..=1.0).contains(&g.opacity) || !matches!(g.blend.as_str(),"Pass Through"|"Normal"|"Multiply"|"Screen"|"Overlay"|"Darken"|"Lighten"|"Color Burn"|"Linear Burn"|"Color Dodge"|"Add"|"Soft Light"|"Hard Light"|"Difference"|"Exclusion"|"Subtract")){return Err("Invalid layer groups".into());}
+        if doc.groups.len()>512 || doc.groups.iter().any(|g|g.id==0 || g.id==u32::MAX || !group_ids.insert(g.id) || g.name.len()>400 || !g.opacity.is_finite() || !(0.0..=1.0).contains(&g.opacity) || !matches!(g.blend.as_str(),"Pass Through"|"Normal"|"Multiply"|"Screen"|"Overlay"|"Darken"|"Lighten"|"Color Burn"|"Linear Burn"|"Color Dodge"|"Add"|"Soft Light"|"Hard Light"|"Difference"|"Exclusion"|"Subtract")){return Err("Invalid layer groups".into());}
         e.state=State{groups:doc.groups,layers,active:doc.active,background:doc.background,background_visible:doc.background_visible};
-        e.refresh_groups();
+        for g in &e.state.groups{
+            if g.parent_id.is_some_and(|id|!e.state.groups.iter().any(|p|p.id==id)){return Err("Invalid parent group".into());}
+            let mut seen=std::collections::HashSet::new();let mut next=Some(g.id);
+            while let Some(id)=next{if !seen.insert(id){return Err("Cyclic layer groups".into());}if seen.len()>32{return Err("Group nesting limit reached".into());}next=e.state.groups.iter().find(|g|g.id==id).and_then(|g|g.parent_id);}
+        }
+        e.normalize_groups();
         Ok(e)
     }
 }
@@ -1119,7 +1158,7 @@ fn default_dpi()->u32{300}
 struct SavedDocument {#[serde(default,skip_serializing_if="Vec::is_empty")]groups:Vec<LayerGroup>,#[serde(default,skip_serializing_if="std::collections::BTreeMap::is_empty")]selections:std::collections::BTreeMap<String,Vec<(u32,u32)>>,#[serde(default="default_dpi")]dpi:u32,version:u32,width:usize,height:usize,active:usize,background:u32,background_visible:bool,layers:Vec<SavedLayer>}
 fn default_true()->bool{true}
 #[derive(Serialize,Deserialize)]
-struct SavedLayer {#[serde(default,skip_serializing_if="Option::is_none")]group_id:Option<u32>,#[serde(default)]mask:Option<Vec<(u32,u32)>>,#[serde(default="default_true")]mask_enabled:bool,#[serde(default)]locked:bool,id:u32,name:String,visible:bool,opacity:f32,blend:String,alpha_lock:bool,clipping:bool,runs:Vec<(u32,u32)>}
+struct SavedLayer {#[serde(default,skip_serializing_if="std::collections::BTreeMap::is_empty")]exterior:std::collections::BTreeMap<i64,Vec<(u32,u32)>>,#[serde(default,skip_serializing_if="Option::is_none")]group_id:Option<u32>,#[serde(default)]mask:Option<Vec<(u32,u32)>>,#[serde(default="default_true")]mask_enabled:bool,#[serde(default)]locked:bool,id:u32,name:String,visible:bool,opacity:f32,blend:String,alpha_lock:bool,clipping:bool,runs:Vec<(u32,u32)>}
 fn encode_mask_runs(values:&[u8])->Vec<(u32,u32)>{let mut out=vec![];for &v in values{let c=v as u32;if let Some((n,p))=out.last_mut(){if *p==c{*n+=1;continue;}}out.push((1,c));}out}
 fn encode_runs(pixels:&[u32])->Vec<(u32,u32)> {
     let mut runs=vec![];for &p in pixels {if let Some((n,c))=runs.last_mut() {if *c==p {*n+=1;continue;}}runs.push((1,p));}runs
@@ -1138,3 +1177,35 @@ mod tests;
 
 #[cfg(test)]
 mod gpu_tests;
+
+#[cfg(test)]
+mod bug_hunt_tests;
+
+fn validate_runs(runs:&[(u32,u32)],count:usize,max:u32)->Result<(),String>{
+    let mut total=0usize;
+    for &(n,value)in runs{if n==0 || value>max{return Err("Invalid pixel data".into());}total=total.checked_add(n as usize).ok_or("Invalid pixel count")?;if total>count{return Err("Invalid pixel count".into());}}
+    if total!=count{return Err("Incomplete pixel data".into());}Ok(())
+}
+fn decode_mask_runs(runs:&[(u32,u32)],count:usize)->Result<Vec<u8>,String>{
+    validate_runs(runs,count,255)?;let mut out=Vec::with_capacity(count);for &(n,value)in runs{out.resize(out.len()+n as usize,value as u8);}Ok(out)
+}
+impl SavedDocument{
+    fn validate_decode_budget(&self)->Result<(),String>{
+        let count=self.width.checked_mul(self.height).ok_or("Canvas size overflow")?;
+        if self.width<16 || self.height<16 || self.width>8192 || self.height>8192 || count>MAX_PIXELS{return Err("Invalid canvas dimensions".into());}
+        if self.layers.is_empty() || self.layers.len()>MAX_LAYERS || self.active>=self.layers.len(){return Err("Invalid layer count".into());}
+        if self.groups.len()>512{return Err("Too many layer groups".into());}
+        let mut bytes=0usize;let mut has_empty=false;let mut pixels=std::collections::HashSet::new();let mut ids=std::collections::HashSet::new();let mut tiles=0;
+        for layer in &self.layers{
+            if layer.id==0 || layer.id==u32::MAX || !ids.insert(layer.id) || !layer.opacity.is_finite(){return Err("Invalid layer metadata".into());}
+            validate_runs(&layer.runs,count,u32::MAX)?;
+            let nonempty=layer.runs.iter().any(|(_,value)|*value!=0);
+            if (nonempty && pixels.insert(&layer.runs)) || (!nonempty && !has_empty){bytes=bytes.checked_add(count*4).ok_or("Document memory budget exceeded")?;}
+            if !nonempty{has_empty=true;}
+            if let Some(mask)=&layer.mask{validate_runs(mask,count,255)?;bytes=bytes.checked_add(count).ok_or("Document memory budget exceeded")?;}
+            tiles+=layer.exterior.len();if layer.exterior.len()>256 || tiles>1024{return Err("Off-canvas storage exceeds document budget".into());}
+            bytes=bytes.checked_add(layer.exterior.len()*128*128*4).ok_or("Document memory budget exceeded")?;
+            if bytes>PIXEL_BUDGET*4{return Err("Document exceeds decode memory budget".into());}
+        }Ok(())
+    }
+}

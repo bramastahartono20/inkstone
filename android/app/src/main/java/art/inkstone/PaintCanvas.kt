@@ -273,6 +273,11 @@ class PaintCanvas(context: Context, val session: DrawingSession) : View(context)
         updateMatrix(); canvas.save(); canvas.concat(transform)
         paint.color = 0xffe0e0e0.toInt(); paint.style = Paint.Style.FILL; paint.shader = null
         val w = session.canvasWidth.toFloat(); val h = session.canvasHeight.toFloat()
+        val outsideSave=canvas.save()
+        canvas.clipOutRect(0f,0f,w,h)
+        paint.alpha=110
+        if(!rasterTransform.draw(canvas,true))for(tile in session.exteriorTiles)canvas.drawBitmap(tile.bitmap,null,RectF(tile.x,tile.y,tile.x+128,tile.y+128),paint)
+        paint.alpha=255;canvas.restoreToCount(outsideSave)
         canvas.drawRect(0f, 0f, w, h, paint)
         if (!session.info.optBoolean("backgroundVisible", true)) {
             val tile = 24f

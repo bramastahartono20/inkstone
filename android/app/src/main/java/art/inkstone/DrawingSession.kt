@@ -323,6 +323,9 @@ class DrawingSession(width: Int, height: Int) : Closeable {
 
     private fun changed() { revision.incrementAndGet(); requestRender() }
 
+    internal data class ExteriorTile(val x:Float,val y:Float,val bitmap:Bitmap)
+    internal var exteriorTiles=listOf<ExteriorTile>();private set
+
     fun requestRender() {
         if (closed || !renderPending.compareAndSet(false, true)) return
         worker.execute {
@@ -331,10 +334,22 @@ class DrawingSession(width: Int, height: Int) : Closeable {
             val w = canvasWidth; val h = canvasHeight
             val resize=bitmap.width!=w || bitmap.height!=h
             val patch=NativeBridge.renderPatch(handle,resize)
+            var exterior:List<ExteriorTile>?=null;var exteriorFull=false
+            if(patch!=null){var offset=4+patch[2]*patch[3]
+                if(offset+3<=patch.size && patch[offset]==0x45585431){
+                    exteriorFull=patch[offset+1]!=0;val count=patch[offset+2];offset+=3
+                    exterior=(0 until count).map{val x=patch[offset];val y=patch[offset+1];offset+=2;val tile=ExteriorTile(x.toFloat(),y.toFloat(),Bitmap.createBitmap(patch,offset,64,64,64,Bitmap.Config.ARGB_8888));offset+=4096;tile}
+                }
+            }
             main.post {
-                if (!closed && patch!=null) {
+                if(!closed && exterior!=null){
+                    val updates=exterior!!;val changed=updates.map{it.x to it.y}.toSet()
+                    val kept=exteriorTiles.filter{tile->if(exteriorFull || (tile.x to tile.y) in changed){tile.bitmap.recycle();false}else true}
+                    exteriorTiles=kept+updates
+                }else if(closed){exterior?.forEach{it.bitmap.recycle()}}
+                if (!closed && (patch!=null || exterior!=null)) {
                     if(resize)bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888)
-                    bitmap.setPixels(patch,4,patch[2],patch[0],patch[1],patch[2],patch[3])
+                    if(patch!=null && patch[2]>0 && patch[3]>0)bitmap.setPixels(patch,4,patch[2],patch[0],patch[1],patch[2],patch[3])
                     frameSerial++;onFrame()
                 }
                 renderPending.set(false)

@@ -41,6 +41,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
             }
         }
     private var colorHeader:View?=null
+    private var selectedLayerGroup:Long?=null
     private var colorTab = "Disc"
     private var currentActionTab="Add"
     private val brushHud=BrushHud(activity)
@@ -166,8 +167,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                     "Paint Mixing"->{session.tool="Paint";session.paintMixingEnabled=true;if(session.paintBrush.wetMix<=0f)session.paintBrush.wetMix=.65f;activity.savePreferences();refreshTools();paintMixing()}
                     "Layers"->{
                         if(panelKey=="Layers")dismissPanel()
-                        else if(panel!=null && !panelIsLeft)session.thumbnails{rebuildPanel(::layers)}
-                        else session.thumbnails{layers()}
+                        else{if(panel!=null && !panelIsLeft)rebuildPanel(::layers)else layers();refreshLayers()}
                     }
                     "Color"->{
                         if(panelKey=="Colors")dismissPanel()
@@ -349,13 +349,16 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         activity.cancelRecordingShortcut()
         departingPanel?.let{it.animate().cancel();removeView(it)};departingPanel=null
         val old=panel ?: return false
+        panelRevision++
         panel=null;panelKey="";departingPanel=old
         StudioMotion.dismiss(old){removeView(old);if(departingPanel===old)departingPanel=null}
         refreshTools();return true
     }
+    private var panelRevision=0L
     private var replacingPanel=false
     private var panelIsLeft=false
     private fun panel(key:String,title:String,height:Int=480,left:Boolean=false,extra:(LinearLayout)->Unit={},footer:(LinearLayout)->Unit={},content:(LinearLayout)->Unit){
+        panelRevision++
         val previous=if(replacingPanel && panelIsLeft==left)panel as? LinearLayout else null
         if(panelKey==key && !replacingPanel){dismissPanel();return};if(previous==null)dismissPanel();departingPanel?.let{it.animate().cancel();removeView(it)};departingPanel=null;panelKey=key;panelIsLeft=left
         val outer=LinearLayout(activity).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(10),dp(8),dp(10),dp(12));elevation=dp(14).toFloat();isClickable=true}
@@ -629,30 +632,59 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
     }
 
     private fun layers(){
-        panel("Layers","Layers",710,extra={h->h.addView(text("Group",14f).apply{setPadding(dp(10),0,dp(10),0);isClickable=true;contentDescription="Create layer group";setOnClickListener{activity.textDialog("Group name","New group"){name->groupAction("create",null,JSONObject().put("name",name))}}});h.addView(icon("Add"){session.command("add"){session.thumbnails{rebuildPanel(::layers)};activity.scheduleSave()}})}){body->
+        if(selectedLayerGroup!=null && (0 until (session.info.optJSONArray("groups")?.length()?:0)).none{session.info.getJSONArray("groups").getJSONObject(it).getLong("id")==selectedLayerGroup})selectedLayerGroup=null
+        panel("Layers","Layers",710,extra={h->h.addView(text("Group",14f).apply{setPadding(dp(10),0,dp(10),0);isClickable=true;contentDescription="Create layer group";setOnClickListener{newGroupForm()}});h.addView(icon("Add"){
+            val revision=panelRevision;val group=selectedLayerGroup
+            session.command("add"){result->if(!result.has("error")){
+                if(group!=null){val info=session.info;moveLayer(info.getJSONArray("layers").getJSONObject(info.getInt("active")).getLong("id"),null,group,true,expectedRevision=revision)}
+                else{refreshLayers(revision);activity.scheduleSave()}
+            }}
+        })}){body->
             body.tag="layer-list"
             val layers=session.info.getJSONArray("layers");val active=session.info.getInt("active")
             val expanded=mutableListOf<View>()
             val groups=session.info.optJSONArray("groups")?:org.json.JSONArray()
             val seenGroups=mutableSetOf<Long>()
+            fun parent(id:Long):Long?=(0 until groups.length()).map{groups.getJSONObject(it)}.firstOrNull{it.getLong("id")==id}?.let{if(it.isNull("parent_id"))null else it.getLong("parent_id")}
+            fun path(id:Long?):List<JSONObject>{val result=mutableListOf<JSONObject>();var next=id;while(next!=null){val g=(0 until groups.length()).map{groups.getJSONObject(it)}.firstOrNull{it.getLong("id")==next}?:break;if(result.any{it.getLong("id")==next})break;result.add(0,g);next=parent(g.getLong("id"))};return result}
             fun header(group:JSONObject){
-                val id=group.getLong("id");val name=group.getString("name")
-                val line=LinearLayout(activity).apply{gravity=Gravity.CENTER_VERTICAL;background=rounded(0x554c535a,StudioShape.CORNER_DP)}
-                line.addView(text((if(group.optBoolean("collapsed"))"▸ "else"▾ ")+name+(if(group.optDouble("opacity",1.0)<1.0)" · ${(group.optDouble("opacity",1.0)*100).roundToInt()}%"else""),15f).apply{gravity=Gravity.CENTER_VERTICAL;setPadding(dp(10),0,0,0);isClickable=true;contentDescription="Toggle group $name";setOnClickListener{groupAction("update",id,JSONObject().put("collapsed",!group.optBoolean("collapsed")))}},LinearLayout.LayoutParams(0,dp(48),1f))
-                line.addView(text(GroupAppearance.label(group.optString("blend","Pass Through")),13f).apply{gravity=Gravity.CENTER;isClickable=true;contentDescription="Options for group $name";setOnClickListener{groupOptions(group)}},LinearLayout.LayoutParams(dp(44),dp(48)))
+                val id=group.getLong("id");val name=group.getString("name");val depth=path(id).size-1
+                val line=LinearLayout(activity).apply{gravity=Gravity.CENTER_VERTICAL;background=rounded(if(selectedLayerGroup==id)blue else 0x554c535a,StudioShape.CORNER_DP);isClickable=true;contentDescription="Group row $name";setOnClickListener{selectedLayerGroup=id;rebuildPanel(::layers)}}
+                line.addView(text(if(group.optBoolean("collapsed"))"▸"else"▾",16f).apply{gravity=Gravity.CENTER;contentDescription="Collapse group $name";isClickable=true;setOnClickListener{groupAction("update",id,JSONObject().put("collapsed",!group.optBoolean("collapsed")))}},LinearLayout.LayoutParams(dp(34),dp(48)))
+                line.addView(text(name+(if(group.optDouble("opacity",1.0)<1.0)" · ${(group.optDouble("opacity",1.0)*100).roundToInt()}%"else""),15f).apply{gravity=Gravity.CENTER_VERTICAL;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;isClickable=true;contentDescription="Toggle group $name";setOnClickListener{selectedLayerGroup=id;rebuildPanel(::layers)};LayerDrag.source(this,session,-id,name)},LinearLayout.LayoutParams(0,dp(48),1f))
+                line.addView(text(GroupAppearance.label(group.optString("blend","Pass Through")),13f).apply{gravity=Gravity.CENTER;maxLines=1;setPadding(0,0,0,0);isClickable=true;contentDescription="Options for group $name";setOnClickListener{selectedLayerGroup=id;groupOptions(group)}},LinearLayout.LayoutParams(dp(44),dp(48)))
                 line.addView(CheckBox(activity).apply{isChecked=group.getBoolean("visible");contentDescription="$name group visible";setOnCheckedChangeListener{_,checked->groupAction("update",id,JSONObject().put("visible",checked))}},LinearLayout.LayoutParams(dp(44),dp(48)))
-                line.tag="group-$id"
-                LayerDrag.target(line,session,folder=true,open=!group.optBoolean("collapsed"),canJoin={source->(0 until layers.length()).map{layers.getJSONObject(it)}.firstOrNull{it.getLong("id")==source}?.optLong("groupId",-1)!=id}){layer,above,join->
-                    val members=(layers.length()-1 downTo 0).map{layers.getJSONObject(it)}.filter{it.optLong("groupId",-1)==id};val own=members.any{it.getLong("id")==layer}
-                    moveLayer(layer,if(join)null else members.firstOrNull()?.getLong("id"),if(join || (own && !above))id else null,if(own && !above)true else above)
+                line.tag="group-$id";LayerDrag.source(line,session,-id,name)
+                LayerDrag.target(line,session,folder=true,open=!group.optBoolean("collapsed"),canJoin={source->if(source<0)path(id).none{it.getLong("id")==-source}else (0 until layers.length()).map{layers.getJSONObject(it)}.firstOrNull{it.getLong("id")==source}?.optLong("groupId",-1)!=id}){source,above,join->
+                    if(source<0){if(-source!=id)moveGroup(-source,null,id,if(join)id else parent(id),above)}else{
+                        val members=(layers.length()-1 downTo 0).map{layers.getJSONObject(it)}.filter{l->path(l.optLong("groupId",-1)).any{it.getLong("id")==id}}
+                        moveLayer(source,if(join)null else (if(above)members.firstOrNull()else members.lastOrNull())?.getLong("id"),if(join)id else parent(id),above,if(join)null else id)
+                    }
                 }
-                body.addView(line,LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(5)})
+                body.addView(line,LinearLayout.LayoutParams(-1,dp(48)).apply{topMargin=dp(5);leftMargin=dp(depth*20)})
             }
-            for(i in layers.length()-1 downTo 0){
+            fun groupsIndex(id:Long,array:org.json.JSONArray)= (0 until array.length()).first{array.getJSONObject(it).getLong("id")==id}
+            fun display(parentId:Long?):List<Int>{
+                data class Item(val position:Int,val tie:Int,val layer:Int?,val group:JSONObject?)
+                val items=mutableListOf<Item>()
+                for(i in 0 until layers.length()){val l=layers.getJSONObject(i);val own=if(l.isNull("groupId"))null else l.getLong("groupId");if(own==parentId)items.add(Item(i*4,0,i,null))}
+                for(j in 0 until groups.length()){val g=groups.getJSONObject(j);val id=g.getLong("id");if(parent(id)!=parentId)continue
+                    val highest=(0 until layers.length()).filter{i->path(layers.getJSONObject(i).optLong("groupId",-1)).any{it.getLong("id")==id}}.maxOrNull()
+                    val anchor=if(g.isNull("anchor_id"))null else (0 until layers.length()).firstOrNull{layers.getJSONObject(it).getLong("id")==g.getLong("anchor_id")}
+                    items.add(Item(highest?.let{it*4+1}?:anchor?.let{it*4-1}?:layers.length()*4+1,j,null,g))
+                }
+                return items.sortedWith(compareByDescending<Item>{it.position}.thenByDescending{it.tie}).flatMap{item->if(item.layer!=null)listOf(item.layer)else{val g=item.group!!;listOf(-groupsIndex(g.getLong("id"),groups)-1)+(if(g.optBoolean("collapsed"))emptyList()else display(g.getLong("id")))}}
+            }
+            for(entry in display(null)){
+                if(entry<0){val g=groups.getJSONObject(-entry-1);seenGroups.add(g.getLong("id"));header(g);continue}
+                val i=entry
                 val layer=layers.getJSONObject(i);val name=layer.getString("name")
                 val group=if(layer.isNull("groupId"))null else (0 until groups.length()).map{groups.getJSONObject(it)}.firstOrNull{it.getLong("id")==layer.getLong("groupId")}
-                if(group!=null){if(seenGroups.add(group.getLong("id")))header(group);if(group.optBoolean("collapsed"))continue}
-                val layerRow=LinearLayout(activity).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(5),dp(5),dp(8),dp(5));background=rounded(if(i==active)blue else 0x443d3d3d,StudioShape.CORNER_DP);isClickable=true;isFocusable=true}
+                val ancestors=path(if(layer.isNull("groupId"))null else layer.getLong("groupId"))
+                var hidden=false
+                for(g in ancestors){if(hidden)break;if(seenGroups.add(g.getLong("id")))header(g);hidden=g.optBoolean("collapsed")}
+                if(hidden)continue
+                val layerRow=LinearLayout(activity).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(5),dp(5),dp(8),dp(5));background=rounded(if(i==active && selectedLayerGroup==null)blue else 0x443d3d3d,StudioShape.CORNER_DP);isClickable=true;isFocusable=true}
                 val thumbnail=FrameLayout(activity).apply{background=rounded(0x336e777c,StudioShape.CORNER_DP);clipToOutline=true}
                 thumbnail.addView(ImageView(activity).apply{scaleType=ImageView.ScaleType.FIT_CENTER;setImageBitmap(session.layerThumbnails.getOrNull(i))},LayoutParams(-1,-1));layerRow.addView(thumbnail,LinearLayout.LayoutParams(dp(56),dp(56)))
                 layerRow.addView(text(name+(if(layer.optBoolean("locked"))" · Locked" else "")+(if(layer.optBoolean("hasMask"))" · Mask" else ""),16f),LinearLayout.LayoutParams(0,-1,1f))
@@ -665,18 +697,19 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                 }}
                 layerRow.addView(blendButton,LinearLayout.LayoutParams(dp(32),dp(48)))
                 layerRow.addView(CheckBox(activity).apply{isChecked=layer.optBoolean("ownVisible",layer.getBoolean("visible"));contentDescription="$name visible";buttonTintList=android.content.res.ColorStateList.valueOf(Color.WHITE);setOnCheckedChangeListener{_,b->session.command("layer",JSONObject().put("index",i).put("visible",b));activity.scheduleSave()}},LinearLayout.LayoutParams(dp(36),dp(48)))
-                layerRow.setOnClickListener{if(i==active)layerOptions(i)else session.command("active",JSONObject().put("index",i)){rebuildPanel(::layers)}}
+                layerRow.setOnClickListener{val hadGroup=selectedLayerGroup!=null;selectedLayerGroup=null;if(i==active && !hadGroup)layerOptions(i)else{val revision=panelRevision;session.command("active",JSONObject().put("index",i)){if(panelRevision==revision)rebuildPanel(::layers)}}}
                 LayerDrag.source(layerRow,session,layer.getLong("id"),name)
-                LayerDrag.target(layerRow,session){source,above,_->
+                LayerDrag.target(layerRow,session){source,above,inside->
                     val id=layer.optLong("groupId",-1);val bottom=id>=0 && (i==0 || layers.getJSONObject(i-1).optLong("groupId",-1)!=id)
-                    moveLayer(source,layer.getLong("id"),if(id<0 || (!above && bottom))null else id,above)
+                    val destination=if(id<0)null else if(!above && bottom && !inside)parent(id) else id
+                    if(source<0){if(path(destination).none{it.getLong("id")==-source})moveGroup(-source,layer.getLong("id"),null,destination,above)}else moveLayer(source,layer.getLong("id"),destination,above)
                 }
                 val actions=LinearLayout(activity)
                 fun swipeAction(label:String,color:Int=0xff303030.toInt(),run:()->Unit){actions.addView(text(label,12f).apply{gravity=Gravity.CENTER;setPadding(dp(2),0,dp(2),0);background=rounded(color,StudioShape.CORNER_DP);isClickable=true;isFocusable=true;contentDescription="$label $name";setOnClickListener{isEnabled=false;run()}},LinearLayout.LayoutParams(0,-1,1f).apply{leftMargin=dp(2)})}
-                swipeAction(if(layer.optBoolean("locked"))"Unlock" else "Lock"){session.command("layer",JSONObject().put("index",i).put("locked",!layer.optBoolean("locked"))){rebuildPanel(::layers);activity.scheduleSave()}}
-                fun action(op:String){session.command("active",JSONObject().put("index",i)){session.command(op){session.thumbnails{rebuildPanel(::layers)};activity.scheduleSave()}}}
+                swipeAction(if(layer.optBoolean("locked"))"Unlock" else "Lock"){val revision=panelRevision;session.command("layer",JSONObject().put("index",i).put("locked",!layer.optBoolean("locked"))){if(panelRevision==revision)rebuildPanel(::layers);activity.scheduleSave()}}
+                fun action(op:String){val revision=panelRevision;session.command(op,JSONObject().put("index",i)){result->if(!result.has("error")){refreshLayers(revision);activity.scheduleSave()}}}
                 swipeAction("Duplicate"){action("duplicate")};swipeAction("Delete",0xffff4c45.toInt()){action("delete")}
-                body.addView(SwipeLayerRow(activity,layerRow,actions,dp(216)).apply{contentDescription="Layer row $name";tag="layer-${layer.getLong("id")}"},LinearLayout.LayoutParams(-1,dp(69)).apply{setMargins(dp(if(group!=null)22 else 2),dp(1),dp(2),dp(1))})
+                body.addView(SwipeLayerRow(activity,layerRow,actions,dp(216)).apply{contentDescription="Layer row $name";tag="layer-${layer.getLong("id")}"},LinearLayout.LayoutParams(-1,dp(69)).apply{setMargins(dp(2+ancestors.size*20),dp(1),dp(2),dp(1))})
                 val opacityRow=LinearLayout(activity).apply{gravity=Gravity.CENTER_VERTICAL};opacityRow.addView(text("Opacity",15f),LinearLayout.LayoutParams(0,dp(32),1f));val opacityLabel=text(if(layer.getDouble("opacity")==1.0)"Max" else "${(layer.getDouble("opacity")*100).roundToInt()}%",14f);opacityRow.addView(opacityLabel);dropdown.addView(opacityRow)
                 dropdown.addView(SeekBar(activity).apply{max=100;progress=(layer.getDouble("opacity")*100).roundToInt();contentDescription="Opacity for $name";progressTintList=android.content.res.ColorStateList.valueOf(blue);thumbTintList=android.content.res.ColorStateList.valueOf(Color.WHITE);setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{override fun onStartTrackingTouch(s:SeekBar){};override fun onProgressChanged(s:SeekBar,p:Int,user:Boolean){opacityLabel.text=if(p==100)"Max" else "$p%"};override fun onStopTrackingTouch(s:SeekBar){session.command("layer",JSONObject().put("index",i).put("opacity",s.progress/100f));activity.scheduleSave()}})},LinearLayout.LayoutParams(-1,dp(28)))
                 val modes=listOf("Darken","Multiply","Colour Burn","Linear Burn","Darker Colour","Normal","Lighten","Screen","Colour Dodge","Add","Overlay","Hard Light","Difference","Exclusion","Subtract")
@@ -685,9 +718,8 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                     session.command("layer",JSONObject().put("index",i).put("blend",mode))
                     modeRows.forEach{(m,v)->v.background=rounded(if(m==mode)blue else Color.TRANSPARENT,StudioShape.CORNER_DP)};blendButton.text=if(mode=="Normal")"N" else mode.take(1);activity.scheduleSave()
                 };v.contentDescription="Blend $mode for $name";v.background=rounded(if(mode==layer.getString("blend"))blue else Color.TRANSPARENT,StudioShape.CORNER_DP);modeRows[mode]=v;dropdown.addView(v,LinearLayout.LayoutParams(-1,dp(40)))}
-                body.addView(dropdown,LinearLayout.LayoutParams(-1,-2).apply{leftMargin=if(group!=null)dp(20)else 0})
+                body.addView(dropdown,LinearLayout.LayoutParams(-1,-2).apply{leftMargin=dp(ancestors.size*20)})
             }
-            for(j in 0 until groups.length()){val group=groups.getJSONObject(j);if(seenGroups.add(group.getLong("id")))header(group)}
             body.addView(row("Background colour","●"){backgroundSettings()})
         }
     }
@@ -706,18 +738,83 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         setBackgroundColor(theme.workspace);sidebar.setBackgroundColor(theme.rail);bottomHost.background=rounded(theme.surface)
         dismissPanel();actionTab("Prefs");StudioTheme.apply(this);refreshTools();canvas.invalidate()
     }
-    private fun moveLayer(id:Long,target:Long?,group:Long?,above:Boolean){
-        val motion=LayerDrag.capture(this,session)
-        session.command("moveLayer",JSONObject().put("id",id).put("targetId",target?:JSONObject.NULL).put("groupId",group?:JSONObject.NULL).put("above",above)){session.thumbnails{rebuildPanel(::layers);motion.settle(this)};activity.scheduleSave()}
+    private fun refreshLayers(expectedRevision:Long=panelRevision,after:()->Unit={}){
+        session.thumbnails{if(panel!=null && panelRevision==expectedRevision){rebuildPanel(::layers);after()}}
+    }
+    private fun moveLayer(id:Long,target:Long?,group:Long?,above:Boolean,targetGroup:Long?=null,expectedRevision:Long=panelRevision){
+        val motion=LayerDrag.capture(this,session);val revision=expectedRevision
+        session.command("moveLayer",JSONObject().put("id",id).put("targetId",target?:JSONObject.NULL).put("targetGroupId",targetGroup?:JSONObject.NULL).put("groupId",group?:JSONObject.NULL).put("above",above)){refreshLayers(revision){motion.settle(this)};activity.scheduleSave()}
+    }
+    private fun moveGroup(id:Long,target:Long?,targetGroup:Long?,parent:Long?,above:Boolean){
+        val motion=LayerDrag.capture(this,session);val revision=panelRevision;selectedLayerGroup=id
+        session.command("group",JSONObject().put("action","move").put("id",id).put("targetId",target?:JSONObject.NULL).put("targetGroupId",targetGroup?:JSONObject.NULL).put("parentId",parent?:JSONObject.NULL).put("above",above)){refreshLayers(revision){motion.settle(this)};activity.scheduleSave()}
+    }
+    private fun newGroupForm(index:Int?=null){
+        val groups=session.info.optJSONArray("groups")?:org.json.JSONArray()
+        val names=(0 until groups.length()).map{groups.getJSONObject(it).getString("name")}.toSet()
+        var number=groups.length()+1;while("Group $number" in names)number++
+        val parent=index?.let{session.info.getJSONArray("layers").getJSONObject(it)}?.let{if(it.isNull("groupId"))null else it.getLong("groupId")}
+        groupNameForm("Group $number",parent,index)
+    }
+    private fun groupNameForm(initial:String,parent:Long?=null,index:Int?=null,rename:Long?=null){
+        rebuildPanel{panel("Group name",if(rename==null)"New group"else"Rename group",410){body->
+            val field=EditText(activity).apply{
+                setText(initial);setTextColor(theme.text);setHintTextColor(theme.secondary);hint="Group name";isSingleLine=true
+                contentDescription="Group name";imeOptions=android.view.inputmethod.EditorInfo.IME_ACTION_DONE;filters=arrayOf(android.text.InputFilter.LengthFilter(100));selectAll()
+                setPadding(dp(14),dp(8),dp(14),dp(8));background=rounded(theme.track,StudioShape.CORNER_DP)
+            }
+            body.addView(field,LinearLayout.LayoutParams(-1,dp(54)))
+            fun hideKeyboard(){(activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)?.hideSoftInputFromWindow(field.windowToken,0);field.clearFocus()}
+            val error=text("",14f).apply{visibility=GONE;setTextColor(0xffde6666.toInt());contentDescription="Group error"}
+            if(rename==null){
+                val groups=session.info.optJSONArray("groups")?:org.json.JSONArray()
+                val destination=(0 until groups.length()).map{groups.getJSONObject(it)}.firstOrNull{it.getLong("id")==parent}
+                body.addView(row("Location",destination?.let{"Inside ${it.getString("name")}"}?:"Top level"){
+                    val draft=field.text.toString();hideKeyboard()
+                    rebuildPanel{panel("Group location","Group location",510){locations->
+                        locations.addView(row("Top level"){groupNameForm(draft,null,index)})
+                        for(i in 0 until groups.length()){
+                            val group=groups.getJSONObject(i);val id=group.getLong("id")
+                            locations.addView(row("Inside ${group.getString("name")}"){groupNameForm(draft,id,index)})
+                        }
+                        locations.addView(row("Cancel"){groupNameForm(draft,parent,index)})
+                    }}
+                })
+                body.addView(text(if(index==null)"Create an empty folder, then drag layers or groups into it."else"Place this layer in a new folder.",13f,theme.secondary),LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(8),dp(12),dp(8),dp(12))})
+            }
+            body.addView(error,LinearLayout.LayoutParams(-1,-2))
+            val submit=row(if(rename==null)"Create group"else"Save group"){ }
+            submit.setOnClickListener{
+                StudioMotion.bounce(submit)
+                val revision=panelRevision
+                val name=field.text.toString().trim()
+                if(name.isEmpty()){error.text="Enter a group name";error.visibility=VISIBLE;return@setOnClickListener}
+                submit.isEnabled=false;field.isEnabled=false;error.visibility=GONE
+                val values=JSONObject().put("action",if(rename==null)"create"else"update").put("name",name)
+                if(rename!=null)values.put("id",rename)else{values.put("parentId",parent?:JSONObject.NULL).put("empty",index==null);if(index!=null)values.put("index",index)}
+                session.command("group",values){result->
+                    if(result.has("error")){submit.isEnabled=true;field.isEnabled=true;error.text=result.getString("error");error.visibility=VISIBLE}
+                    else{
+                        selectedLayerGroup=rename?:result.optLong("createdGroupId",-1).takeIf{it>0}
+                        if(panelRevision==revision){hideKeyboard();rebuildPanel(::layers);refreshLayers()};activity.scheduleSave()
+                    }
+                }
+            }
+            field.setOnEditorActionListener{_,action,event->
+                if(action==android.view.inputmethod.EditorInfo.IME_ACTION_DONE || event?.let{it.keyCode==android.view.KeyEvent.KEYCODE_ENTER && it.action==android.view.KeyEvent.ACTION_UP}==true){if(submit.isEnabled)submit.performClick();true}else false
+            }
+            body.addView(submit);body.addView(row("Cancel"){hideKeyboard();rebuildPanel(::layers)})
+        }}
     }
     private fun groupAction(action:String,id:Long?,values:JSONObject=JSONObject()){
+        val revision=panelRevision
         values.put("action",action);if(id!=null)values.put("id",id)
-        session.command("group",values){session.thumbnails{rebuildPanel(::layers)};activity.scheduleSave()}
+        session.command("group",values){result->if(!result.has("error")){refreshLayers(revision);activity.scheduleSave()}}
     }
     private fun groupOptions(group:JSONObject){
         val id=group.getLong("id")
         AlertDialog.Builder(activity).setTitle(group.getString("name")).setItems(arrayOf("Rename",if(group.optBoolean("locked"))"Unlock group"else"Lock group","Move contents","Ungroup","Blend & opacity")){_,which->when(which){
-            0->activity.textDialog("Group name",group.getString("name")){groupAction("update",id,JSONObject().put("name",it))}
+            0->groupNameForm(group.getString("name"),rename=id)
             1->groupAction("update",id,JSONObject().put("locked",!group.optBoolean("locked")))
             2->GroupMoveDialog.show(activity){x,y->groupAction("translate",id,JSONObject().put("x",x).put("y",y))}
             3->groupAction("ungroup",id)
@@ -730,7 +827,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         AlertDialog.Builder(activity).setTitle("Layer group").setItems(options.toTypedArray()){_,which->
             val layer=session.info.getJSONArray("layers").getJSONObject(index)
             when(which){
-                0->activity.textDialog("Group name","New group"){groupAction("create",null,JSONObject().put("name",it).put("index",index))}
+                0->newGroupForm(index)
                 1->if(!layer.isNull("groupId"))groupAction("removeMember",layer.getLong("groupId"),JSONObject().put("index",index))
                 else->groupAction("member",groups.getJSONObject(which-2).getLong("id"),JSONObject().put("index",index))
             }

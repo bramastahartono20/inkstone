@@ -10,5 +10,7 @@ export ANDROID_USER_HOME="${ANDROID_USER_HOME:-$ROOT/.toolchain/android-user}"
 export GRADLE_USER_HOME="${GRADLE_USER_HOME:-$ROOT/.toolchain/gradle}"
 ./android/gradlew -p android assembleDebug --no-daemon
 mkdir -p releases
-cp android/app/build/outputs/apk/debug/app-debug.apk releases/inkstone-0.20-debug.apk
-echo "APK: $ROOT/releases/inkstone-0.20-debug.apk"
+VERSION="$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" android/app/build.gradle)"
+test -n "$VERSION"
+cp android/app/build/outputs/apk/debug/app-debug.apk "releases/inkstone-$VERSION-debug.apk"
+echo "APK: $ROOT/releases/inkstone-$VERSION-debug.apk"

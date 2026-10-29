@@ -191,6 +191,29 @@ class StudioTest {
         assertFalse(a.getSharedPreferences("studio",0).getBoolean("pressureEnabled",true))
         render(e,"canvas-lock-settings");shutdown(controller)
     }
+    @Test fun exteriorDrawingRendersAndUndoesThroughJni(){
+        val session=DrawingSession(64,64);session.stabilization=0f;session.size=12f
+        session.stroke(0,floatArrayOf(10f,20f,1f,0f));session.stroke(1,floatArrayOf(-20f,20f,1f,0f));session.stroke(2,floatArrayOf())
+        until{session.info.optInt("undo")==1 && session.exteriorTiles.isNotEmpty()}
+        assertTrue(session.exteriorTiles.any{it.x<0})
+        session.command("undo");until{session.info.optInt("undo")==0 && session.exteriorTiles.isEmpty()}
+        session.command("redo");until{session.exteriorTiles.isNotEmpty()};session.close()
+    }
+    @Test fun quickShapeRecognizesUnevenRotatedPolygonsAndEllipses(){
+        fun polygon(vertices:List<android.graphics.PointF>):List<android.graphics.PointF>{
+            val points=mutableListOf<android.graphics.PointF>()
+            for(i in vertices.indices){val a=vertices[i];val b=vertices[(i+1)%vertices.size];val count=if(i==0)180 else 25
+                for(j in 0 until count){val t=j.toFloat()/count;val x=a.x+(b.x-a.x)*t;val y=a.y+(b.y-a.y)*t
+                    points.add(android.graphics.PointF(300+x*.866f-y*.5f,300+x*.5f+y*.866f))}}
+            points.add(points.first());return points
+        }
+        assertEquals("Triangle",QuickShape.fit(polygon(listOf(android.graphics.PointF(0f,0f),android.graphics.PointF(160f,0f),android.graphics.PointF(80f,140f))))?.name)
+        assertEquals("Rectangle",QuickShape.fit(polygon(listOf(android.graphics.PointF(0f,0f),android.graphics.PointF(180f,0f),android.graphics.PointF(180f,90f),android.graphics.PointF(0f,90f))))?.name)
+        for(ratio in listOf(.35f,.65f,1f)){
+            val points=(0..200).map{val t=it*2*Math.PI/200;val x=100*kotlin.math.cos(t).toFloat();val y=100*ratio*kotlin.math.sin(t).toFloat();android.graphics.PointF(300+x*.866f-y*.5f,300+x*.5f+y*.866f)}
+            assertEquals(if(ratio==1f)"Circle"else"Ellipse",QuickShape.fit(points)?.name)
+        }
+    }
     @Test fun panelSectionsKeepTheirContainer(){
         val controller=Robolectric.buildActivity(MainActivity::class.java).setup();val a=controller.get();val e=checkNotNull(a.editor)
         render(e,"panel-before");click(e,"Paint");render(e,"brush-before-switch")

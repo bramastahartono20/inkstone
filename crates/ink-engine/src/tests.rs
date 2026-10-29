@@ -828,3 +828,144 @@ fn wet_paint_carries_color_into_empty_pixels_and_undo_redo_is_exact(){
     let mut fade=draw(0.7,25.0);let painted=fade.save().unwrap();assert!(fade.undo());assert!(fade.redo());assert_eq!(fade.save().unwrap(),painted);
     let a=brush_color::BrushColor::parse(&json!({"mix":1.0,"pickup":8.0,"wetness":-3.0})).unwrap();assert_eq!(a.pickup,1.0);assert_eq!(a.wetness,0.0);
 }
+
+#[test]
+fn exterior_paint_survives_save_cancel_undo_and_layer_visibility(){
+    let mut e=Engine::new(64,64).unwrap();
+    dot(&mut e,-12.0,20.0,12.0,0xffab2244);
+    let saved=e.save().unwrap();assert!(!e.state.layers[0].exterior.is_empty());
+    assert!(e.state.layers[0].pixels.iter().all(|p|*p==0));
+    let mut loaded=Engine::load(&saved).unwrap();assert_eq!(saved,loaded.save().unwrap());
+    assert!(!loaded.exterior_preview()["tiles"].as_array().unwrap().is_empty());
+    e.undo();assert!(e.state.layers[0].exterior.is_empty());e.redo();assert_eq!(saved,e.save().unwrap());
+    e.begin(Sample{x:-20.0,y:40.0,pressure:1.0,tilt:0.0},Brush::default());e.cancel();assert_eq!(saved,e.save().unwrap());
+    e.compact_history_to(0);assert!(e.history_error.is_none());e.undo();assert!(e.state.layers[0].exterior.is_empty());e.redo();assert_eq!(saved,e.save().unwrap());
+    e.command(&json!({"op":"layer","visible":false})).unwrap();
+    assert!(e.exterior_preview()["tiles"].as_array().unwrap().is_empty());
+}
+#[test]
+fn exterior_crossing_stroke_eraser_clear_and_export_are_bounded(){
+    let mut e=Engine::new(64,64).unwrap();let brush=Brush{size:12.0,stabilization:0.0,..Brush::default()};
+    e.begin(Sample{x:20.0,y:20.0,pressure:1.0,tilt:0.0},brush);e.sample(Sample{x:-20.0,y:20.0,pressure:1.0,tilt:0.0});e.end();
+    assert_eq!(e.undo.len(),1);let saved=e.save().unwrap();
+    assert!(e.state.layers[0].pixels.iter().any(|p|p>>24!=0));assert!(!e.state.layers[0].exterior.is_empty());
+    e.begin(Sample{x:-15.0,y:20.0,pressure:1.0,tilt:0.0},Brush{kind:64,size:24.0,..brush});e.end();e.undo();assert_eq!(saved,e.save().unwrap());
+    e.command(&json!({"op":"clear"})).unwrap();assert!(e.state.layers[0].exterior.is_empty());e.undo();assert_eq!(saved,e.save().unwrap());
+    let mut out=vec![0u8;64*64*4];assert!(e.render(&mut out,false));assert_eq!(out.len(),16384);
+}
+
+#[test]
+fn nested_groups_move_as_a_subtree_and_reject_cycles(){
+    let mut e=Engine::new(16,16).unwrap();
+    e.command(&json!({"op":"group","action":"create","name":"Inner"})).unwrap();
+    e.command(&json!({"op":"add"})).unwrap();
+    e.command(&json!({"op":"moveLayer","id":2,"groupId":null})).unwrap();
+    e.command(&json!({"op":"group","action":"create","name":"Outer"})).unwrap();
+    e.command(&json!({"op":"group","action":"move","id":1,"parentId":2})).unwrap();
+    assert_eq!(e.state.groups[0].parent_id,Some(2));
+    e.command(&json!({"op":"group","action":"update","id":2,"visible":false,"locked":true})).unwrap();
+    assert!(e.state.layers.iter().all(|l|!l.is_visible() && l.is_locked()));
+    assert!(e.command(&json!({"op":"group","action":"move","id":2,"parentId":1})).is_err());
+    let loaded=Engine::load(&e.save().unwrap()).unwrap();assert_eq!(loaded.state.groups[0].parent_id,Some(2));
+    e.command(&json!({"op":"group","action":"move","id":1,"parentId":null,"targetId":2,"above":true})).unwrap();
+    assert_eq!(e.state.layers.last().unwrap().id,1);assert!(e.state.layers.last().unwrap().is_visible());
+    e.undo();assert_eq!(e.state.groups[0].parent_id,Some(2));
+    e.redo();assert_eq!(e.state.groups[0].parent_id,None);
+    let mut doc:Value=serde_json::from_slice(&e.save().unwrap()).unwrap();doc["groups"][0]["parent_id"]=json!(2);doc["groups"][1]["parent_id"]=json!(1);
+    assert!(Engine::load(&serde_json::to_vec(&doc).unwrap()).is_err());
+}
+
+#[test]
+fn nested_group_opacity_compositing_psd_and_ungroup_keep_children(){
+    let mut e=Engine::new(16,16).unwrap();e.command(&json!({"op":"background","visible":false})).unwrap();e.command(&json!({"op":"fill","color":0xffff0000u32})).unwrap();
+    e.command(&json!({"op":"group","action":"create","name":"Inner"})).unwrap();
+    e.command(&json!({"op":"group","action":"create","name":"Outer","empty":true})).unwrap();
+    e.command(&json!({"op":"group","action":"move","id":1,"parentId":2})).unwrap();
+    for id in [1,2]{e.command(&json!({"op":"group","action":"update","id":id,"opacity":0.5,"blend":"Normal"})).unwrap();}
+    let pixel=e.color_at(4,4,false);assert!((60..=66).contains(&(pixel>>24)));assert_eq!(pixel&0xffffff,0xff0000);
+    let mut psd=Vec::new();e.write_psd(&mut psd).unwrap();let (imported,_)=Engine::read_psd(&psd).unwrap();assert!(((imported.color_at(4,4,false)>>24) as i32-(pixel>>24) as i32).abs()<=1);
+    e.command(&json!({"op":"group","action":"ungroup","id":2})).unwrap();assert_eq!(e.state.groups[0].parent_id,None);assert_eq!(e.state.layers[0].group_id,Some(1));
+    e.undo();assert_eq!(e.state.groups[0].parent_id,Some(2));
+}
+
+
+#[test]
+fn dragging_parent_moves_every_nested_layer_and_keeps_their_order(){
+    let mut e=Engine::new(16,16).unwrap();
+    e.command(&json!({"op":"group","action":"create"})).unwrap();
+    e.command(&json!({"op":"add"})).unwrap();
+    e.command(&json!({"op":"group","action":"create","name":"Nested"})).unwrap();
+    e.command(&json!({"op":"add"})).unwrap();
+    e.command(&json!({"op":"moveLayer","id":3,"groupId":null,"targetId":2,"above":true})).unwrap();
+    e.command(&json!({"op":"group","action":"move","id":1,"parentId":null,"targetId":3,"above":true})).unwrap();
+    assert_eq!(e.state.layers.iter().map(|l|l.id).collect::<Vec<_>>(),vec![3,1,2]);
+    assert_eq!(e.state.groups[1].parent_id,Some(1));
+    e.command(&json!({"op":"undo"})).unwrap();assert_eq!(e.state.layers.iter().map(|l|l.id).collect::<Vec<_>>(),vec![1,2,3]);
+    e.command(&json!({"op":"redo"})).unwrap();assert_eq!(e.info()["historyNotice"],"Redo: Move layer group");
+}
+
+#[test]
+fn empty_group_position_is_undoable_and_persists_between_layers(){
+    let mut e=Engine::new(16,16).unwrap();e.command(&json!({"op":"add"})).unwrap();
+    e.command(&json!({"op":"group","action":"create","name":"Empty","empty":true})).unwrap();
+    e.command(&json!({"op":"group","action":"move","id":1,"targetId":1,"above":false})).unwrap();
+    assert_eq!(e.state.groups[0].anchor_id,Some(1));assert!(e.state.layers.iter().all(|l|l.group_id.is_none()));
+    let loaded=Engine::load(&e.save().unwrap()).unwrap();assert_eq!(loaded.state.groups[0].anchor_id,Some(1));
+    e.undo();assert_eq!(e.state.groups[0].anchor_id,None);e.redo();assert_eq!(e.state.groups[0].anchor_id,Some(1));
+    e.command(&json!({"op":"group","action":"create","name":"Second empty","empty":true})).unwrap();
+    e.command(&json!({"op":"group","action":"move","id":2,"targetGroupId":1,"above":false})).unwrap();
+    assert_eq!(e.state.groups[0].id,2);assert_eq!(e.state.groups[0].anchor_id,Some(1));
+}
+
+#[test]
+fn off_canvas_preview_updates_only_changed_tiles_and_can_clear_them(){
+    let mut e=Engine::new(128,128).unwrap();e.render_patch(true);e.exterior_patch();
+    e.begin(Sample{x:-40.,y:40.,pressure:1.,tilt:0.},Brush{size:12.,pressure_size:0.,stabilization:0.,..Brush::default()});e.end();
+    let first=e.exterior_patch().unwrap();assert_eq!(first[1],0);assert_eq!(first[2],1);assert!(e.exterior_patch().is_none());
+    e.begin(Sample{x:180.,y:40.,pressure:1.,tilt:0.},Brush{size:12.,pressure_size:0.,stabilization:0.,..Brush::default()});e.end();
+    let next=e.exterior_patch().unwrap();assert_eq!(next[1],0);assert_eq!(next[2],1);assert_eq!(next[3],128);
+    e.command(&json!({"op":"clear"})).unwrap();let clear=e.exterior_patch().unwrap();assert_eq!(clear[1],1);assert_eq!(clear[2],0);
+}
+
+#[test]
+fn whole_layer_transform_moves_and_resizes_ink_across_artboard_edges(){
+    let mut e=Engine::new(128,128).unwrap();
+    e.begin(Sample{x:-30.,y:40.,pressure:1.,tilt:0.},Brush{size:12.,pressure_size:0.,stabilization:0.,..Brush::default()});e.sample(Sample{x:30.,y:40.,pressure:1.,tilt:0.});e.end();
+    let before=e.save().unwrap();let snapshot=e.transform_snapshot();assert!(snapshot[2]<0);assert!(snapshot[4]>0);
+    assert!(e.state.layers[0].pixel_at(-30,40,e.width,e.height)>>24>0);
+    e.command(&json!({"op":"transformProjective","matrix":[1,0,60,0,1,0,0,0,1],"filter":"Nearest"})).unwrap();
+    assert_eq!(e.state.layers[0].pixel_at(-30,40,e.width,e.height),0);assert!(e.state.layers[0].pixels[40*128+30]>>24>0);assert!(e.state.layers[0].pixels[40*128+90]>>24>0);
+    e.undo();assert_eq!(e.save().unwrap(),before);e.redo();
+    e.command(&json!({"op":"transformProjective","matrix":[2,0,-160,0,2,-40,0,0,1],"filter":"Bilinear"})).unwrap();
+    assert!(e.transform_extent(true,0)[0]<0);assert!(e.state.layers[0].pixel_at(-100,40,e.width,e.height)>>24>0);
+    let loaded=Engine::load(&e.save().unwrap()).unwrap();assert_eq!(loaded.state.layers[0].pixel_at(-100,40,128,128),e.state.layers[0].pixel_at(-100,40,128,128));
+}
+
+#[test]
+fn placing_the_anchor_layer_into_an_empty_folder_keeps_the_folder_in_place(){
+    let mut e=Engine::new(16,16).unwrap();e.command(&json!({"op":"add"})).unwrap();
+    e.command(&json!({"op":"group","action":"create","empty":true})).unwrap();
+    e.command(&json!({"op":"group","action":"move","id":1,"targetId":1,"above":false})).unwrap();
+    e.command(&json!({"op":"moveLayer","id":1,"groupId":1})).unwrap();
+    assert_eq!(e.state.layers[0].id,1);assert_eq!(e.state.layers[0].group_id,Some(1));assert_eq!(e.state.groups[0].anchor_id,Some(2));
+    e.command(&json!({"op":"moveLayer","id":1,"groupId":null,"targetId":1,"above":false})).unwrap();
+    assert_eq!(e.state.groups[0].anchor_id,Some(2));
+}
+
+#[test]
+fn explicit_top_level_creation_and_nested_empty_folders_do_not_steal_layers(){
+    let mut e=Engine::new(16,16).unwrap();
+    e.command(&json!({"op":"group","action":"create","name":"Existing layer folder"})).unwrap();
+    for name in ["Second","Third","Fourth"]{
+        let info=e.command(&json!({"op":"group","action":"create","name":name,"empty":true,"parentId":null})).unwrap();assert!(info["createdGroupId"].as_u64().unwrap()>1);
+    }
+    assert_eq!(e.state.groups.len(),4);assert!(e.state.groups.iter().all(|g|g.parent_id.is_none()));assert_eq!(e.state.layers[0].group_id,Some(1));
+    e.command(&json!({"op":"group","action":"update","id":2,"collapsed":true})).unwrap();
+    e.command(&json!({"op":"group","action":"create","name":"Child","empty":true,"parentId":2})).unwrap();
+    e.command(&json!({"op":"group","action":"update","id":2,"collapsed":true})).unwrap();
+    e.command(&json!({"op":"group","action":"update","id":5,"collapsed":true})).unwrap();
+    e.command(&json!({"op":"group","action":"create","name":"Grandchild","empty":true,"parentId":5})).unwrap();
+    assert_eq!(e.group_path(Some(6)).len(),3);let info=e.info();assert_eq!(info["groups"][1]["collapsed"],false);assert_eq!(info["groups"][4]["collapsed"],false);
+    let restored=Engine::load(&e.save().unwrap()).unwrap();assert_eq!(restored.group_path(Some(6)).len(),3);
+    e.command(&json!({"op":"group","action":"create","name":"Wrap at root","index":0,"parentId":null})).unwrap();assert_eq!(e.state.groups.last().unwrap().parent_id,None);
+}

@@ -105,22 +105,40 @@ internal class RasterTransform(private val canvas:PaintCanvas,private val sessio
             "Colour Burn"->BlendMode.COLOR_BURN;"Colour Dodge"->BlendMode.COLOR_DODGE;"Add"->BlendMode.PLUS;else->BlendMode.SRC_OVER
         }else xfermode=PorterDuffXfermode(when(name){"Multiply"->PorterDuff.Mode.MULTIPLY;"Screen"->PorterDuff.Mode.SCREEN;"Overlay"->PorterDuff.Mode.OVERLAY;"Darken"->PorterDuff.Mode.DARKEN;"Lighten"->PorterDuff.Mode.LIGHTEN;"Add"->PorterDuff.Mode.ADD;else->PorterDuff.Mode.SRC_OVER})
     }
-    fun draw(c:Canvas):Boolean{
+    fun draw(c:Canvas,outside:Boolean=false):Boolean{
         val s=snapshot?:return false;val page=RectF(0f,0f,session.canvasWidth.toFloat(),session.canvasHeight.toFloat())
-        if(s.info.optBoolean("backgroundVisible",true)){p.color=s.info.getLong("background").toInt();c.drawRect(page,p)}
-        val clipped=c.save();c.clipRect(page);val layers=s.info.getJSONArray("layers");var base=-1
+        if(!outside && s.info.optBoolean("backgroundVisible",true)){p.color=s.info.getLong("background").toInt();c.drawRect(page,p)}
+        val clipped=c.save();if(outside)c.clipOutRect(page)else c.clipRect(page)
+        val exteriorAlpha=if(outside)c.saveLayer(null,Paint().apply{alpha=110})else -1
+        val layers=s.info.getJSONArray("layers");val groups=s.info.optJSONArray("groups")?:JSONArray();var base=-1
+        val stack=mutableListOf<Pair<Long,Int>>()
+        fun isolatedPath(layer:JSONObject):List<JSONObject>{
+            var id=if(layer.isNull("groupId"))null else layer.getLong("groupId");val path=mutableListOf<JSONObject>();val seen=mutableSetOf<Long>()
+            while(id!=null && seen.add(id)){
+                val g=(0 until groups.length()).map{groups.getJSONObject(it)}.firstOrNull{it.getLong("id")==id}?:break
+                if(g.optString("blend","Pass Through")!="Pass Through" || g.optDouble("opacity",1.0)<1.0)path.add(0,g)
+                id=if(g.isNull("parent_id"))null else g.getLong("parent_id")
+            };return path
+        }
         for(i in 0 until layers.length()){
-            val layer=layers.getJSONObject(i);if(!layer.optBoolean("clipping"))base=i
+            val layer=layers.getJSONObject(i);val path=isolatedPath(layer)
+            val common=stack.zip(path).takeWhile{it.first.first==it.second.getLong("id")}.size
+            while(stack.size>common)c.restoreToCount(stack.removeAt(stack.lastIndex).second)
+            for(g in path.drop(common))stack.add(g.getLong("id") to c.saveLayer(if(outside)null else page,GroupAppearance.paint(g.optString("blend","Pass Through"),g.optDouble("opacity",1.0).toFloat())))
+            if(!layer.optBoolean("clipping"))base=i
             if(!layer.getBoolean("visible"))continue
-            val save=c.saveLayer(page,blend(layer.getString("blend"),layer.getDouble("opacity").toFloat()))
+            val save=c.saveLayer(if(outside)null else page,blend(layer.getString("blend"),layer.getDouble("opacity").toFloat()))
             layerSource(c,i,s)
             if(layer.optBoolean("clipping")){
-                val mask=c.saveLayer(page,Paint().apply{xfermode=PorterDuffXfermode(PorterDuff.Mode.DST_IN)})
+                val mask=c.saveLayer(if(outside)null else page,Paint().apply{xfermode=PorterDuffXfermode(PorterDuff.Mode.DST_IN)})
                 if(base>=0 && layers.getJSONObject(base).getBoolean("visible"))layerSource(c,base,s)
                 c.restoreToCount(mask)
             }
             c.restoreToCount(save)
-        };c.restoreToCount(clipped);return true
+        }
+        while(stack.isNotEmpty())c.restoreToCount(stack.removeAt(stack.lastIndex).second)
+        if(exteriorAlpha>=0)c.restoreToCount(exteriorAlpha)
+        c.restoreToCount(clipped);return true
     }
     private fun points():List<PointF>{val r=snapshot?.bounds?:return emptyList();return listOf(PointF(r.left,r.top),PointF(r.right,r.top),PointF(r.right,r.bottom),PointF(r.left,r.bottom),PointF(r.centerX(),r.top),PointF(r.right,r.centerY()),PointF(r.centerX(),r.bottom),PointF(r.left,r.centerY()))}
     private fun mapped():List<PointF> = points().map{v->val a=floatArrayOf(v.x,v.y);matrix.mapPoints(a);PointF(a[0],a[1])}

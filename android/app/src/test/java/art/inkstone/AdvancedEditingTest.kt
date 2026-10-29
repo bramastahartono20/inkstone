@@ -125,8 +125,8 @@ class AdvancedEditingTest{
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(160,120,visible=false);val e=a.editor!!;val s=e.session
         command(s,"group",JSONObject().put("action","create").put("name","Sketch"));command(s,"add")
         layout(e,"group-raster-before");click(e,"Layers");until{named(e,"Toggle group Sketch")!=null};layout(e,"group-raster-open")
-        assertNotNull(named(e,"Layer row Layer 1"));click(e,"Toggle group Sketch");until{s.info.getJSONArray("groups").getJSONObject(0).getBoolean("collapsed")};until{named(e,"Layer row Layer 1")==null};layout(e,"group-raster-collapsed")
-        click(e,"Toggle group Sketch");until{named(e,"Layer row Layer 1")!=null}
+        assertNotNull(named(e,"Layer row Layer 1"));click(e,"Collapse group Sketch");until{s.info.getJSONArray("groups").getJSONObject(0).getBoolean("collapsed")};until{named(e,"Layer row Layer 1")==null};layout(e,"group-raster-collapsed")
+        click(e,"Collapse group Sketch");until{named(e,"Layer row Layer 1")!=null}
         val saved=bytes(s);val handle=NativeBridge.create(16,16);try{val info=JSONObject(NativeBridge.load(handle,saved));assertEquals("Sketch",info.getJSONArray("groups").getJSONObject(0).getString("name"));assertEquals(1L,info.getJSONArray("layers").getJSONObject(1).getLong("groupId"))}finally{NativeBridge.destroy(handle)}
         done(c)
     }
@@ -207,4 +207,72 @@ class AdvancedEditingTest{
         val session=a.session;controller.pause().stop().destroy();until{session==null || session.fullyClosed};until{a.io.isTerminated}
     }
 
+
+    @Test fun groupHeadersSelectDragNestAndIndentChildren(){
+        val c=Robolectric.buildActivity(MainActivity::class.java).setup();val e=c.get().editor!!;val s=e.session
+        command(s,"group",JSONObject().put("action","create").put("name","Inner"))
+        command(s,"group",JSONObject().put("action","create").put("name","Outer").put("empty",true))
+        layout(e,"nested-before");click(e,"Layers");until{named(e,"Group row Outer")!=null};layout(e,"nested-open")
+        click(e,"Toggle group Inner");layout(e,"nested-selected");assertNotNull(named(e,"Layer row Layer 1"))
+        val target=named(e,"Group row Outer")!!
+        fun drop(action:Int){
+            val method=DragEvent::class.java.declaredMethods.first{it.name=="obtain" && it.parameterTypes.size>1};method.isAccessible=true;var f=0
+            val args=method.parameterTypes.map{type->when(type){Integer.TYPE->action;java.lang.Float.TYPE->if(f++==0)50f else target.height*.5f;java.lang.Boolean.TYPE->false;Any::class.java->LayerDrag.Token(s,-1);else->null}}.toTypedArray()
+            target.dispatchDragEvent(method.invoke(null,*args) as DragEvent)
+        }
+        drop(DragEvent.ACTION_DRAG_STARTED);drop(DragEvent.ACTION_DRAG_ENTERED);drop(DragEvent.ACTION_DROP);drop(DragEvent.ACTION_DRAG_ENDED)
+        until{s.info.getJSONArray("groups").getJSONObject(0).optLong("parent_id",-1)==2L};until{(named(e,"Group row Inner")?.layoutParams as? LinearLayout.LayoutParams)?.leftMargin==20};layout(e,"nested-after")
+        assertEquals(20,(named(e,"Group row Inner")!!.layoutParams as LinearLayout.LayoutParams).leftMargin)
+        assertEquals(42,(named(e,"Layer row Layer 1")!!.layoutParams as LinearLayout.LayoutParams).leftMargin)
+        click(e,"Collapse group Outer");until{named(e,"Group row Inner")==null};assertNull(named(e,"Layer row Layer 1"))
+        click(e,"Collapse group Outer");until{named(e,"Layer row Layer 1")!=null}
+        command(s,"undo");command(s,"undo");command(s,"undo");assertTrue(s.info.getJSONArray("groups").getJSONObject(0).isNull("parent_id"));done(c)
+    }
+
+    @Test fun emptyFolderCanMoveAndBottomDropCanStayInsideGroup(){
+        val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(160,120);val e=a.editor!!;val s=e.session
+        command(s,"group",JSONObject().put("action","create").put("name","Sketch"));command(s,"add");command(s,"moveLayer",JSONObject().put("id",2).put("groupId",JSONObject.NULL).put("targetId",1).put("above",true))
+        command(s,"group",JSONObject().put("action","create").put("name","Empty").put("empty",true))
+        command(s,"group",JSONObject().put("action","move").put("id",2).put("targetId",1).put("above",false))
+        layout(e,"gaps-before");click(e,"Layers");until{named(e,"Group row Empty")!=null};layout(e,"gaps-empty-folder")
+        assertTrue(named(e,"Group row Empty")!!.top>named(e,"Layer row Layer 1")!!.top)
+        val target=named(e,"Layer row Layer 1")!!.let{if(it is ViewGroup)it.getChildAt(it.childCount-1)else it}
+        val before=s.info.getInt("undo")
+        for(action in listOf(DragEvent.ACTION_DRAG_STARTED,DragEvent.ACTION_DRAG_ENTERED,DragEvent.ACTION_DROP,DragEvent.ACTION_DRAG_ENDED)){
+            val method=DragEvent::class.java.declaredMethods.first{it.name=="obtain" && it.parameterTypes.size>1};method.isAccessible=true;var f=0
+            val args=method.parameterTypes.map{type->when(type){Integer.TYPE->action;java.lang.Float.TYPE->if(f++==0)160f else target.height*.95f;java.lang.Boolean.TYPE->false;Any::class.java->LayerDrag.Token(s,2);else->null}}.toTypedArray();target.dispatchDragEvent(method.invoke(null,*args) as DragEvent)
+        }
+        until{s.info.getInt("undo")==before+1};assertEquals(1L,s.info.getJSONArray("layers").getJSONObject(0).getLong("groupId"));assertEquals(2L,s.info.getJSONArray("layers").getJSONObject(0).getLong("id"));done(c)
+    }
+    @Test fun exteriorBinaryFramesAndTransformPreviewIncludeNegativeCoordinates(){
+        val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(160,120);val e=a.editor!!;val s=e.session
+        s.stroke(0,floatArrayOf(-30f,40f,1f,0f));s.stroke(1,floatArrayOf(30f,40f,1f,0f));s.stroke(2,floatArrayOf());until{s.exteriorTiles.isNotEmpty()};assertEquals(-128f,s.exteriorTiles.first().x,0f)
+        var snap:TransformSnapshot?=null;s.transformSnapshot{snap=it};until{snap!=null};assertTrue(snap!!.bounds.left<0);snap!!.recycle()
+        layout(e,"exterior-transform-before");click(e,"Transform");until{e.canvas.rasterTransform.ready};assertTrue(e.canvas.rasterTransform.bounds!!.left<0);layout(e,"exterior-transform-preview")
+        e.canvas.rasterTransform.dispose();command(s,"transformProjective",JSONObject().put("matrix",JSONArray(listOf(1,0,60,0,1,0,0,0,1))).put("filter","Nearest"));until{s.exteriorTiles.isEmpty()};done(c)
+    }
+
+    @Test fun customGroupFormCreatesMultipleRootGroupsAndNestedIndentation(){
+        val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(160,120);val e=a.editor!!;val s=e.session
+        layout(e,"group-form-before");click(e,"Layers");until{named(e,"Create layer group")!=null}
+        fun create(name:String,parent:String?=null,count:Int){
+            click(e,"Create layer group");until{named(e,"Group name") is EditText}
+            assertFalse(ShadowAlertDialog.getLatestAlertDialog()?.isShowing==true)
+            (named(e,"Group name") as EditText).setText(name)
+            if(parent!=null){click(e,"Location");click(e,"Inside $parent");until{named(e,"Group name") is EditText};assertEquals(name,(named(e,"Group name") as EditText).text.toString())}
+            if(name=="First" || parent!=null)layout(e,"group-form-editing")
+            if(name=="Third")(named(e,"Group name") as EditText).onEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_DONE)else click(e,"Create group")
+            until{s.info.getJSONArray("groups").length()==count};until{named(e,"Group row $name")!=null}
+        }
+        create("First",count=1);create("Second",count=2);create("Third",count=3)
+        assertTrue((0 until 3).all{s.info.getJSONArray("groups").getJSONObject(it).isNull("parent_id")});assertTrue(s.info.getJSONArray("layers").getJSONObject(0).isNull("groupId"))
+        click(e,"Collapse group First");until{s.info.getJSONArray("groups").getJSONObject(0).getBoolean("collapsed")}
+        create("Child","First",4);create("Grandchild","Child",5);layout(e,"group-form-nested-result")
+        assertEquals(20,(named(e,"Group row Child")!!.layoutParams as LinearLayout.LayoutParams).leftMargin)
+        assertEquals(40,(named(e,"Group row Grandchild")!!.layoutParams as LinearLayout.LayoutParams).leftMargin)
+        click(e,"Add");until{s.info.getJSONArray("layers").length()==2};until{named(e,"Layer row Layer 2")!=null};layout(e,"group-form-nested-layer")
+        assertEquals(62,(named(e,"Layer row Layer 2")!!.layoutParams as LinearLayout.LayoutParams).leftMargin)
+        click(e,"Create layer group");until{named(e,"Group name") is EditText};(named(e,"Group name") as EditText).setText("   ");click(e,"Create group");assertEquals(View.VISIBLE,named(e,"Group error")!!.visibility);assertEquals(5,s.info.getJSONArray("groups").length());click(e,"Cancel")
+        done(c)
+    }
 }

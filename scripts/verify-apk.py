@@ -3,12 +3,14 @@
 import hashlib
 import json
 import pathlib
+import re
 import struct
 import sys
 import zipfile
 
 root = pathlib.Path(__file__).resolve().parents[1]
-apk = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'releases/inkstone-0.20-debug.apk'
+version = re.search(r"versionName '([^']+)'", (root / 'android/app/build.gradle').read_text()).group(1)
+apk = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else root / f'releases/inkstone-{version}-debug.apk'
 required = ['create', 'destroy', 'command', 'stroke', 'render', 'renderPatch', 'preview', 'save', 'load', 'importPixels', 'thumbnails', 'writePsd', 'transformSnapshot', 'importPsd']
 result = {'apk': apk.name, 'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(), 'bytes': apk.stat().st_size, 'abis': {}}
 with zipfile.ZipFile(apk) as archive:

@@ -15,11 +15,12 @@ internal object LayerDrag {
     data class Token(val owner:Any,val id:Long,val height:Int=0,val width:Int=0)
     private var release:Triple<Any,Long,PointF>?=null
     fun source(view:View,owner:Any,id:Long,name:String){
-        view.tooltipText="Hold and drag to move this layer"
+        view.tooltipText=if(id<0)"Hold and drag to move this group"else"Hold and drag to move this layer"
         view.setOnLongClickListener{
             var row=it
-            while(row.parent is View && row.tag!="layer-$id")row=row.parent as View
-            if(row.tag!="layer-$id")row=it
+            val key=if(id<0)"group-${-id}"else"layer-$id"
+            while(row.parent is View && row.tag!=key)row=row.parent as View
+            if(row.tag!=key)row=it
             row.startDragAndDrop(ClipData.newPlainText("Inkstone layer",name),View.DragShadowBuilder(row),Token(owner,id,row.height,row.width),0)
         }
     }
@@ -57,7 +58,7 @@ internal object LayerDrag {
                         update(event.y,token.id);var parent=view.parent;while(parent!=null && parent !is ScrollView)parent=parent.parent;scroll=parent as? ScrollView
                         scroll?.let{s->val a=IntArray(2);val b=IntArray(2);view.getLocationOnScreen(a);s.getLocationOnScreen(b);val y=a[1]+event.y-b[1];val edge=48*view.resources.displayMetrics.density;val next=when{y<edge->-18;y>s.height-edge->18;else->0};if(next!=speed){view.removeCallbacks(move);speed=next;if(speed!=0)view.post(move)}}
                     }
-                    DragEvent.ACTION_DROP->{update(event.y,token.id);val at=IntArray(2);view.getLocationOnScreen(at);release=Triple(owner,token.id,PointF(at[0]+event.x-token.width/2f,at[1]+event.y-token.height/2f));val join=glow.join;val above=glow.above;stop();drop(token.id,above,join)}
+                    DragEvent.ACTION_DROP->{update(event.y,token.id);val at=IntArray(2);view.getLocationOnScreen(at);release=Triple(owner,token.id,PointF(at[0]+event.x-token.width/2f,at[1]+event.y-token.height/2f));val join=if(folder)glow.join else event.x>=64*view.resources.displayMetrics.density;val above=glow.above;stop();drop(token.id,above,join)}
                     DragEvent.ACTION_DRAG_EXITED,DragEvent.ACTION_DRAG_ENDED->stop()
                 };true
             }
@@ -70,7 +71,7 @@ internal object LayerDrag {
                 override fun onPreDraw():Boolean{
                 if(body.viewTreeObserver.isAlive)body.viewTreeObserver.removeOnPreDrawListener(this)
                 scroll?.scrollTo(0,scrollY)
-                each(body){v->val key=v.tag as? String?:return@each;val at=IntArray(2);v.getLocationOnScreen(at);val source=key=="layer-${drop?.first}";val from=if(source)drop!!.second.y else old[key]?.y?:return@each
+                each(body){v->val key=v.tag as? String?:return@each;val at=IntArray(2);v.getLocationOnScreen(at);val source=key==(drop?.first?.let{if(it<0)"group-${-it}"else"layer-$it"});val from=if(source)drop!!.second.y else old[key]?.y?:return@each
                     v.animate().cancel();v.translationY=from-at[1];v.translationX=(if(source)drop!!.second.x else old[key]?.x?:at[0].toFloat())-at[0];if(source){v.scaleX=1f;v.scaleY=1f;v.alpha=1f}
                     v.animate().translationX(0f).translationY(0f).scaleX(1f).scaleY(1f).alpha(1f).setDuration(if(source)380 else 300).setInterpolator(if(source)DecelerateInterpolator(1.5f)else DecelerateInterpolator()).start()
                 };return true

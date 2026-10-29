@@ -1,0 +1,161 @@
+{
+  "date": "2026-10-29",
+  "release": "0.21",
+  "findings": [
+    {
+      "id": "BH01",
+      "location": "crates/ink-engine/src/lib.rs:879",
+      "issue": "Tile-budget violations could produce a native file that would not reopen",
+      "severity": "Critical",
+      "evidence": "Merging two 200-tile layers produced a 400-tile layer, while the native decoder accepts at most 256. Merge and Duplicate now reject unsafe storage growth before mutation; live stamps update the global tile count as each tile is allocated.",
+      "test": "audit_merge_cannot_create_an_unloadable_exterior",
+      "status": "fixed"
+    },
+    {
+      "id": "BH02",
+      "location": "crates/ink-engine/src/selection.rs:77",
+      "issue": "Paste could overflow a native identifier and crash",
+      "severity": "Critical",
+      "evidence": "With next_id = u32::MAX, selectionPaste panicked on += 1. It now returns an error before recording a change.",
+      "test": "audit_paste_rejects_exhausted_ids_without_panicking",
+      "status": "fixed"
+    },
+    {
+      "id": "BH03",
+      "location": "crates/ink-engine/src/lib.rs:1078",
+      "issue": "Import decoded masks before enforcing its memory budget",
+      "severity": "Critical",
+      "evidence": "Previously every RLE mask was expanded before the final layer_bytes check; many empty layers with huge masks bypassed the per-pixel allocation check. Preflight now validates total decoded storage and RLE values before allocating planes; masks decode directly to bytes.",
+      "test": "audit_document_preflight_bounds_masks_before_pixel_allocation",
+      "status": "fixed"
+    },
+    {
+      "id": "BH04",
+      "location": "crates/ink-engine/src/groups.rs:123",
+      "issue": "Moving a group left its off-canvas ink behind",
+      "severity": "High",
+      "evidence": "A mark at (-20,40), moved with its group by +40 px, stayed at its old position. The shared bounded remapper now moves interior, exterior and masks transactionally.",
+      "test": "audit_group_translation_moves_the_whole_layer",
+      "status": "fixed"
+    },
+    {
+      "id": "BH05",
+      "location": "crates/ink-engine/src/lib.rs:838",
+      "issue": "Flip Canvas did not reflect off-canvas pixels",
+      "severity": "High",
+      "evidence": "Horizontal flip of a 128-pixel canvas left x=-20 unchanged instead of moving it to x=147. Both axes now remap the complete layer.",
+      "test": "audit_flip_canvas_includes_exterior_ink",
+      "status": "fixed"
+    },
+    {
+      "id": "BH06",
+      "location": "crates/ink-engine/src/transform.rs:95",
+      "issue": "A transform beyond exterior bounds could erase the artwork",
+      "severity": "High",
+      "evidence": "A +10000 px translation returned success and silently discarded every painted pixel. Transforms outside supported storage now fail with the original state intact.",
+      "test": "audit_transform_rejects_offcanvas_overflow_instead_of_erasing_art",
+      "status": "fixed"
+    },
+    {
+      "id": "BH07",
+      "location": "crates/ink-engine/src/lib.rs:877",
+      "issue": "Merge across a folder boundary lost group appearance",
+      "severity": "High",
+      "evidence": "Merging a blue layer inside a 25%-opacity group onto a root red layer discarded the folder opacity. Cross-folder merges now require moving layers to the same group first.",
+      "test": "audit_merge_rejects_group_boundary_appearance_loss",
+      "status": "fixed"
+    },
+    {
+      "id": "BH08",
+      "location": "crates/ink-engine/src/selection.rs:84",
+      "issue": "Paste duplicated source ink outside the selection",
+      "severity": "High",
+      "evidence": "The paste implementation cloned the source Layer including its entire exterior map. A rectangular interior copy therefore pasted unrelated exterior ink as well. The new layer now contains only clipboard pixels.",
+      "test": "audit_paste_does_not_duplicate_unselected_exterior",
+      "status": "fixed"
+    },
+    {
+      "id": "BH09",
+      "location": "crates/ink-engine/src/groups.rs:95",
+      "issue": "Group ID exhaustion could create duplicate folders",
+      "severity": "High",
+      "evidence": "saturating_add at the maximum group ID reused the ID, leaving a document that could not reload. Exhaustion is checked before mutation; maximum IDs are rejected on import.",
+      "test": "audit_group_ids_do_not_saturate_into_duplicate_ids",
+      "status": "fixed"
+    },
+    {
+      "id": "BH10",
+      "location": "android/app/src/main/java/art/inkstone/EditorView.kt:637",
+      "issue": "A delayed Add Layer result could replace the new-group form",
+      "severity": "High",
+      "evidence": "A deterministic blocked-worker test clicked Add then Group. The late thumbnail callback replaced the name form. The Add path now captures the destination and panel revision at click time.",
+      "test": "delayedAddCannotReplaceTheNewGroupForm",
+      "status": "fixed"
+    },
+    {
+      "id": "BH11",
+      "location": "crates/ink-engine/src/lib.rs:1196",
+      "issue": "Unbounded empty-layer metadata could exhaust the UI and JNI",
+      "severity": "High",
+      "evidence": "Empty planes shared one buffer, so a small native file could contain thousands of layers without hitting the pixel budget. Both native and Vector decoders now validate a 4096-layer metadata ceiling before rendering; normal painting is still constrained by the existing memory budget.",
+      "test": "audit_metadata_layer_limit_is_checked_without_decoding_images / oversizedVectorLayerMetadataIsRejected",
+      "status": "fixed"
+    },
+    {
+      "id": "BH12",
+      "location": "crates/ink-engine/src/lib.rs:1059",
+      "issue": "Thin imported images became blank layers",
+      "severity": "Medium",
+      "evidence": "Importing a 1\u00d72048 opaque image into 64\u00d764 rounded the fitted width down to zero. Both fitted dimensions now retain at least one pixel.",
+      "test": "audit_import_preserves_extreme_aspect_ratio_images",
+      "status": "fixed"
+    },
+    {
+      "id": "BH13",
+      "location": "android/app/src/main/java/art/inkstone/RasterTransform.kt:114",
+      "issue": "Transform preview ignored nested folder opacity",
+      "severity": "Medium",
+      "evidence": "Two nested 50%-opacity folders should preview alpha\u224864; the old preview rendered alpha=255. The preview now composites nested group scopes and applies exterior display opacity after compositing.",
+      "test": "transformPreviewRetainsNestedGroupOpacity",
+      "status": "fixed"
+    },
+    {
+      "id": "BH14",
+      "location": "android/app/src/main/java/art/inkstone/RecentBrushes.kt:10",
+      "issue": "Renaming a personal brush removed it from Recent",
+      "severity": "Medium",
+      "evidence": "Recent stored names rather than stable IDs. Renaming a saved brush made its entry unresolvable. Entries now use custom IDs/builtin keys and migrate legacy names on read.",
+      "test": "renamedCustomBrushRemainsInRecentBrushes",
+      "status": "fixed"
+    },
+    {
+      "id": "BH15",
+      "location": "crates/ink-engine/src/lib.rs:795",
+      "issue": "Explicit layer actions could affect the wrong active layer",
+      "severity": "High",
+      "evidence": "Duplicate/Delete accepted an index but operated on the active layer instead. A queued UI selection could therefore change the target. Native actions now honor the explicit index, and swipe actions send one atomic request.",
+      "test": "audit_explicit_layer_actions_do_not_target_a_different_active_layer",
+      "status": "fixed"
+    },
+    {
+      "id": "BH16",
+      "location": "crates/ink-engine/src/exterior.rs:40",
+      "issue": "Canvas Flip expanded every shared empty plane",
+      "severity": "High",
+      "evidence": "Flipping four blank layers replaced their shared empty buffer with four independent buffers; many large blank/duplicated layers could exceed memory budgets. Remapping now allocates interior pixels lazily and Flip caches identical geometry with a preparation budget.",
+      "test": "audit_flip_preserves_shared_empty_planes",
+      "status": "fixed"
+    }
+  ],
+  "rust_tests": 103,
+  "metal_gpu_tests": 12,
+  "android_tests": 132,
+  "dependency_queries": 142,
+  "dependency_advisory": {
+    "id": "RUSTSEC-2024-0436",
+    "kind": "INFO unmaintained",
+    "package": "paste",
+    "version": "1.0.15",
+    "android_aarch64_dependency_tree": false
+  }
+}

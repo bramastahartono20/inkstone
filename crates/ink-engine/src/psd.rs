@@ -58,15 +58,12 @@ impl Engine {
         if let Some((index,before))=&self.flood_preview{source[*index].pixels=before.clone();}
         let mut export_layers=Vec::new();let mut seen=std::collections::HashSet::new();
         for layer in &source{
-            let group=layer.group_id.and_then(|id|self.state.groups.iter().find(|g|g.id==id)).filter(|g|g.blend!="Pass Through" || g.opacity<1.0);
+            let group=self.group_path(layer.group_id).into_iter().find(|g|g.blend!="Pass Through" || g.opacity<1.0);
             if let Some(g)=group{
                 if !seen.insert(g.id){continue;}
-                let members:Vec<_>=source.iter().filter(|l|l.group_id==Some(g.id)).collect();
+                let members:Vec<_>=source.iter().filter(|l|self.in_group(l.group_id,g.id)).cloned().collect();
                 let mut pixels=vec![0;self.width*self.height];
-                for (index,pixel) in pixels.iter_mut().enumerate(){let mut base=0.0;for member in &members{
-                    if !member.clipping{base=if member.visible{channel(member.pixels[index],24)*member.mask_coverage(index)}else{0.0};}
-                    if member.visible{*pixel=composite(*pixel,member.pixels[index],member.opacity*member.mask_coverage(index)*if member.clipping{base}else{1.0},&member.blend);}
-                }}
+                for (index,pixel) in pixels.iter_mut().enumerate(){*pixel=self.composite_grouped_except(&members,0,Some(g.id),|l|(l.pixels[index],l.mask_coverage(index)));}
                 let mut combined=layer.clone();combined.name=g.name.clone();combined.pixels=Arc::new(pixels);combined.group_id=None;combined.group_visible=true;combined.group_locked=false;combined.visible=g.visible;combined.locked=g.locked;combined.opacity=g.opacity;combined.blend=if g.blend=="Pass Through"{"Normal".into()}else{g.blend.clone()};combined.clipping=false;combined.mask=None;combined.alpha_lock=false;
                 export_layers.push(combined);
             }else{export_layers.push(layer.clone());}
