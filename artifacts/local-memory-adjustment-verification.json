@@ -1,0 +1,61 @@
+{
+  "apk": "inkstone-0.22-local-memory-adjustment-fix.apk",
+  "sha256": "3b7b1b387ab92756d5bb72848827784d0277ca8cf8383e4c8bec2a9c18bfe147",
+  "bytes": 21973115,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4479992,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1116392,
+          "alignment": 16384
+        },
+        {
+          "offset": 4340736,
+          "alignment": 16384
+        },
+        {
+          "offset": 4474712,
+          "alignment": 16384
+        }
+      ]
+    },
+    "x86_64": {
+      "bytes": 5101360,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1186576,
+          "alignment": 16384
+        },
+        {
+          "offset": 4951872,
+          "alignment": 16384
+        },
+        {
+          "offset": 5096032,
+          "alignment": 16384
+        }
+      ]
+    }
+  },
+  "static_checks_passed": true,
+  "validation": {
+    "rust_tests": 130,
+    "lint": "passed",
+    "build": "passed",
+    "native_byte_matches": true,
+    "android_UI_tests": "blocked: local Robolectric native RenderNode binding failure",
+    "physical_device_tested": false,
+    "published": false
+  }
+}

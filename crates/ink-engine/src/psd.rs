@@ -56,15 +56,18 @@ impl Engine {
         self.flush_gpu();
         let mut source=self.state.layers.clone();
         if let Some((index,before))=&self.flood_preview{source[*index].pixels=before.clone();}
+        let clip_groups=groups::clipping_groups(&self.state.groups,&source);
         let mut export_layers=Vec::new();let mut seen=std::collections::HashSet::new();
         for layer in &source{
-            let group=self.group_path(layer.group_id).into_iter().find(|g|g.blend!="Pass Through" || g.opacity<1.0);
+            let group=self.group_path(layer.group_id).into_iter().find(|g|g.blend!="Pass Through" || g.opacity<1.0 || clip_groups.contains(&g.id));
             if let Some(g)=group{
                 if !seen.insert(g.id){continue;}
                 let members:Vec<_>=source.iter().filter(|l|self.in_group(l.group_id,g.id)).cloned().collect();
                 let mut pixels=vec![0;self.width*self.height];
-                for (index,pixel) in pixels.iter_mut().enumerate(){*pixel=self.composite_grouped_except(&members,0,Some(g.id),|l|(l.pixels[index],l.mask_coverage(index)));}
-                let mut combined=layer.clone();combined.name=g.name.clone();combined.pixels=Arc::new(pixels);combined.group_id=None;combined.group_visible=true;combined.group_locked=false;combined.visible=g.visible;combined.locked=g.locked;combined.opacity=g.opacity;combined.blend=if g.blend=="Pass Through"{"Normal".into()}else{g.blend.clone()};combined.clipping=false;combined.mask=None;combined.alpha_lock=false;
+                let plan=groups::PreparedComposite::except(&self.state.groups,&members,Some(g.id));
+                for (index,pixel) in pixels.iter_mut().enumerate(){*pixel=plan.color(0,|l|(l.pixels[index],l.mask_coverage(index)));}
+                if clip_groups.contains(&g.id){for p in &mut pixels{*p=(*p&0x00ffffff)|(((channel(*p,24)*g.opacity*255.0).round() as u32)<<24);}}
+                let mut combined=layer.clone();combined.name=g.name.clone();combined.pixels=crate::tiles::Tiles::from_flat(&pixels,self.width,self.height);combined.group_id=None;combined.group_visible=true;combined.group_locked=false;combined.visible=g.visible;combined.locked=g.locked;combined.opacity=if clip_groups.contains(&g.id){1.0}else{g.opacity};combined.blend=if g.blend=="Pass Through"{"Normal".into()}else{g.blend.clone()};combined.clipping=false;combined.mask=None;combined.alpha_lock=false;
                 export_layers.push(combined);
             }else{export_layers.push(layer.clone());}
         }
@@ -83,8 +86,9 @@ impl Engine {
             blend: "Normal",
             id: u32::MAX,mask:None,mask_enabled:true,
         });
-        for layer in &export_layers {
-            let pixels=layer.pixels.as_slice();
+        let flat_planes:Vec<Vec<u32>>=export_layers.iter().map(|l|l.pixels.to_vec()).collect();
+        for (plane,layer) in flat_planes.iter().zip(&export_layers) {
+            let pixels=plane.as_slice();
             let mut rect = [self.width, self.height, 0, 0];
             for y in 0..self.height {
                 for x in 0..self.width {

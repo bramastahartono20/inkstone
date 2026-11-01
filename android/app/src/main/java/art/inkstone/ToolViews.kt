@@ -60,12 +60,17 @@ class ToolIcon(context: Context, var symbol: String, private val action: () -> U
     }
     private val undo=shape {moveTo(-8f,-2f);cubicTo(8f,-7f,13f,6f,3f,8f);lineTo(-1f,8f);moveTo(-4f,-7f);lineTo(-9f,-2f);lineTo(-4f,2f)}
     private val dashes=DashPathEffect(floatArrayOf(2.2f,2.2f),0f)
+    var mixingEnabled=false
     init {isClickable=true;isFocusable=true;contentDescription=symbol;tooltipText=when(symbol){"Paint Mixing"->"Paint Mixing · color pickup and wetness";"Paint"->"Brush / Pen";"Erase"->"Eraser · tap again for hardness";"Select"->"Selection";"Transform"->"Move / resize";"Color"->"Colors · drag to fill";"Nodes"->"Edit vector points";else->symbol};setOnClickListener{action()}}
     override fun onDraw(c:Canvas) {
         val s=min(width,height)/48f
         c.save();c.translate(width/2f,height/2f);c.scale(s,s)
         p.style=Paint.Style.FILL
         if(symbol in editingTools) {p.color=if(selectedAmount>.01f)Color.argb((255*selectedAmount).toInt(),44,166,235) else if(light)0x10000000 else 0x30000000;c.drawCircle(0f,0f,14f,p)}
+        if(symbol=="Paint Mixing"){
+            p.style=Paint.Style.FILL;p.color=if(mixingEnabled)0x224fba87 else if(light)0x18778089 else 0x287e8790;c.drawCircle(0f,0f,19f,p)
+            p.style=Paint.Style.STROKE;p.strokeWidth=1.5f;p.color=if(mixingEnabled)0x996bd49d.toInt() else if(light)0x66747f89 else 0x668b949e;c.drawCircle(0f,0f,18f,p);p.style=Paint.Style.FILL
+        }
         if(isFocused) {p.color=0x33888888;c.drawRoundRect(-21f,-21f,21f,21f,7f,7f,p)}
         val base=if(light)0xff454545.toInt() else 0xffc7c7c7.toInt()
         fun channel(shift:Int)=(((base ushr shift) and 255)*(1-selectedAmount)+((StudioColors.accent ushr shift) and 255)*selectedAmount).toInt()
@@ -155,6 +160,12 @@ class BrushPreview(context:Context,val preset:BrushPreset,var chosen:Boolean=fal
     override fun onSizeChanged(w:Int,h:Int,oldw:Int,oldh:Int){
         if(w<=0||h<=0)return
         stroke?.recycle();stroke=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888)
+        val nativeTip=runCatching{context.assets.open("brushes/tip-${preset.kind}.png").use{BitmapFactory.decodeStream(it)}}.getOrNull()
+        if(nativeTip!=null && preset.colorMode=="Solid"){
+            val c=Canvas(stroke!!);val ink=if(eraser)0xff273440.toInt()else if(StudioTheme.of(context).light)0xff374a5c.toInt()else 0xffedf3f4.toInt()
+            p.colorFilter=PorterDuffColorFilter(ink,PorterDuff.Mode.SRC_IN);c.drawBitmap(nativeTip,null,RectF(8f,h*.22f,w-8f,h.toFloat()),p);p.colorFilter=null;nativeTip.recycle();return
+        }
+        nativeTip?.recycle()
         val c=Canvas(stroke!!);val d=resources.displayMetrics.density
         p.color=if(eraser)0xff273440.toInt() else if(StudioTheme.of(context).light)0xff374a5c.toInt() else 0xffedf3f4.toInt();p.style=Paint.Style.FILL
         p.maskFilter=if(preset.kind in listOf(2,8,9))BlurMaskFilter((if(preset.kind==2)12 else if(preset.kind==9)2 else 6)*d,BlurMaskFilter.Blur.NORMAL) else if(preset.kind==4)BlurMaskFilter(3*d,BlurMaskFilter.Blur.NORMAL) else null
@@ -212,16 +223,11 @@ class ColorDisc(context:Context,initial:Int,var classic:Boolean=false,val change
         p.shader=SweepGradient(cx,cy,colors,null);p.style=Paint.Style.STROKE;p.strokeWidth=r*.13f
         c.drawCircle(cx,cy,r*.91f,p);p.shader=null;p.style=Paint.Style.FILL
         val inner=r*.76f
-        val size=(inner*2).toInt().coerceAtLeast(2)
-        if(cachedHue!=hsv[0]||lastSize!=size){
-            disc?.recycle();val pixels=IntArray(size*size)
-            for(y in 0 until size)for(x in 0 until size){
-                val nx=(x-size/2f)/(size/2f);val ny=(y-size/2f)/(size/2f)
-                if(classic||nx*nx+ny*ny<=1f){val sat=((nx+1f)*.5f).coerceIn(0f,1f);val value=((1f-ny)*.5f).coerceIn(0f,1f);pixels[y*size+x]=Color.HSVToColor(floatArrayOf(hsv[0],sat,value))}
-            }
-            disc=Bitmap.createBitmap(pixels,size,size,Bitmap.Config.ARGB_8888);cachedHue=hsv[0];lastSize=size
-        }
-        disc?.let{c.drawBitmap(it,null,RectF(cx-inner,cy-inner,cx+inner,cy+inner),p)}
+        c.save();c.clipPath(Path().apply{addCircle(cx,cy,inner,Path.Direction.CW)})
+        p.shader=LinearGradient(cx-inner,cy,cx+inner,cy,Color.WHITE,Color.HSVToColor(floatArrayOf(hsv[0],1f,1f)),Shader.TileMode.CLAMP)
+        c.drawRect(cx-inner,cy-inner,cx+inner,cy+inner,p)
+        p.shader=LinearGradient(cx,cy-inner,cx,cy+inner,Color.TRANSPARENT,Color.BLACK,Shader.TileMode.CLAMP)
+        c.drawRect(cx-inner,cy-inner,cx+inner,cy+inner,p);p.shader=null;c.restore()
         val angle=Math.toRadians(hsv[0].toDouble());val hx=cx+cos(angle).toFloat()*r*.91f;val hy=cy+sin(angle).toFloat()*r*.91f
         p.style=Paint.Style.STROKE;p.color=Color.WHITE;p.strokeWidth=2.5f*resources.displayMetrics.density;c.drawCircle(hx,hy,r*.065f,p)
         val sx=cx+(hsv[1]*2-1)*inner;val sy=cy+(1-hsv[2]*2)*inner

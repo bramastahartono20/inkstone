@@ -28,20 +28,27 @@ class GalleryView(private val activity: MainActivity) : LinearLayout(activity) {
         this.text=text;textSize=size;setTextColor(theme.label(color));gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),0,dp(12),0)
     }
     init {orientation=VERTICAL;setBackgroundColor(theme.surface);rebuild()}
+    private val resizeGallery=Runnable{if(width>0)rebuild()}
+    override fun onSizeChanged(w:Int,h:Int,oldw:Int,oldh:Int){
+        super.onSizeChanged(w,h,oldw,oldh)
+        if(w>0 && w!=oldw){removeCallbacks(resizeGallery);post(resizeGallery)}
+    }
     private fun rebuild(animate:Boolean=false,destination:String?=null,release:Pair<String,android.graphics.PointF>?=null){
         val oldScroll=(findViewWithTag<View>("gallery-scroll") as? ScrollView)?.scrollY?:0
         motion?.cancel(this);motion=if(animate && childCount>0)GalleryMotion.capture(this,destination,release)else null
         removeAllViews();artworkCards.clear()
-        val narrow=resources.displayMetrics.widthPixels/density<600
+        val viewportWidth=if(width>0)width else resources.displayMetrics.widthPixels
+        val narrow=viewportWidth/density<600
         val header=LinearLayout(activity).apply{gravity=Gravity.CENTER_VERTICAL;setPadding(dp(if(narrow)12 else 36),dp(6),dp(16),0)}
         header.addView(label("Inkstone",if(narrow)27f else 36f).apply{typeface=Typeface.create("sans-serif-medium",Typeface.BOLD)},LayoutParams(0,dp(80),1f))
         fun action(text:String,run:()->Unit){header.addView(label(text,15f).apply{gravity=Gravity.CENTER;isClickable=true;isFocusable=true;setOnClickListener{run()}},LayoutParams(-2,dp(52)))}
-        action(if(selecting)"Done" else "Select"){selecting=!selecting;selected.clear();rebuild()}
-        if(!narrow){action("Import"){activity.importDocument()};action("Photo"){activity.importImage()}}
+        action(if(selecting)"Done" else "Select"){selecting=!selecting;selected.clear();rebuild();if(selecting)artworkCards.values.forEach{v->v.animate().scaleX(.97f).scaleY(.97f).setDuration(450).withEndAction{v.animate().scaleX(1f).scaleY(1f).setDuration(450).start()}.start()}}
+        if(!narrow){action("Import"){importArtwork()}}
+        header.addView(ToolIcon(activity,"Help"){Tutorials.show(activity)}.apply{light=theme.light;contentDescription="Tutorials"},LayoutParams(dp(44),dp(52)))
         header.addView(ToolIcon(activity,"Add"){activity.createDialog()},LayoutParams(dp(48),dp(52)))
         addView(header)
         if(narrow){val imports=LinearLayout(activity).apply{gravity=Gravity.RIGHT;setPadding(0,0,dp(18),0)}
-            for((name,run)in listOf("Import" to {activity.importDocument()},"Photo" to {activity.importImage()}))imports.addView(label(name).apply{isFocusable=true;setOnClickListener{run()}},LayoutParams(-2,dp(42)))
+            for((name,run)in listOf("Import" to {importArtwork()}))imports.addView(label(name).apply{isFocusable=true;setOnClickListener{run()}},LayoutParams(-2,dp(42)))
             addView(imports)
         }
         val artworks=activity.store.list();val stacks=activity.store.stacks()
@@ -78,7 +85,7 @@ class GalleryView(private val activity: MainActivity) : LinearLayout(activity) {
             empty.addView(label("Create canvas",16f,blue).apply{gravity=Gravity.CENTER;isFocusable=true;setOnClickListener{activity.createDialog()}},LayoutParams(-1,dp(52)))
             content.addView(empty,LayoutParams(-1,-1))
         } else {
-            val available=resources.displayMetrics.widthPixels/density-(if(narrow)32 else 84)
+            val available=viewportWidth/density-(if(narrow)32 else 84)
             val columns=if(available<500)2 else if(available<850)3 else 4
             val cardW=(available/columns).toInt()
             for(chunk in entries.chunked(columns)){
@@ -121,9 +128,9 @@ class GalleryView(private val activity: MainActivity) : LinearLayout(activity) {
         }
         val image=ImageView(activity).apply{scaleType=ImageView.ScaleType.FIT_CENTER;setPadding(dp(7),dp(7),dp(7),dp(7))}
         frame.addView(image,FrameLayout.LayoutParams(-1,-1))
-        frame.addView(label("⋯",24f).apply{gravity=Gravity.CENTER;contentDescription="Artwork options for ${art.name}";tooltipText="Rename, tags, stack and more";background=GradientDrawable().apply{setColor(0x9920252b.toInt());cornerRadius=dp(StudioShape.CORNER_DP).toFloat()};setOnClickListener{artworkOptions(art)}},FrameLayout.LayoutParams(dp(44),dp(36),Gravity.TOP or Gravity.RIGHT))
+        frame.addView(label("⋯",24f).apply{gravity=Gravity.CENTER;visibility=if(selecting)View.GONE else View.VISIBLE;contentDescription="Artwork options for ${art.name}";tooltipText="Rename, tags, stack and more";background=GradientDrawable().apply{setColor(0x9920252b.toInt());cornerRadius=dp(StudioShape.CORNER_DP).toFloat()};setOnClickListener{artworkOptions(art)}},FrameLayout.LayoutParams(dp(44),dp(36),Gravity.TOP or Gravity.RIGHT))
         loadThumbnail(image,art.id)
-        if(art.id in selected)frame.addView(label("✓",22f,blue).apply{gravity=Gravity.RIGHT or Gravity.TOP},FrameLayout.LayoutParams(-1,dp(40)))
+        if(selecting)frame.addView(label(if(art.id in selected)"☑" else "☐",22f,blue).apply{gravity=Gravity.RIGHT or Gravity.TOP},FrameLayout.LayoutParams(-1,dp(40)))
         card.addView(frame,LayoutParams(-1,dp((widthDp*.72f).toInt())))
         card.addView(label(art.name,14f).apply{setPadding(dp(2),0,dp(2),0);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END},LayoutParams(-1,dp(32)))
         card.addView(label("${art.width} × ${art.height}px${if(art.mode=="vector")" · Vector" else ""}",11f,0xff999999.toInt()).apply{setPadding(dp(2),0,0,0)},LayoutParams(-1,dp(18)))
@@ -131,7 +138,17 @@ class GalleryView(private val activity: MainActivity) : LinearLayout(activity) {
         artworkCards[art.id]=card
         card.setOnClickListener{if(activity.navigationBusy)return@setOnClickListener;if(selecting){if(!selected.add(art.id))selected.remove(art.id);rebuild()}else activity.openArtwork(art)}
         ArtworkDrag.source(card,activity.store,art.id){if(activity.navigationBusy)emptyList()else selected.toList()}
+        ArtworkDrag.target(card,activity.store){token,point->
+            if(art.id !in token.ids && !activity.navigationBusy){
+                val stack=art.stackId?:activity.store.createStack("New stack")
+                activity.store.assignStack((token.ids+art.id).distinct(),stack)
+                selected.clear();selecting=false;rebuild(true,"stack:$stack","art:${token.primary}" to point)
+            }
+        }
         return card
+    }
+    private fun importArtwork(){
+        AlertDialog.Builder(activity).setTitle("Import artwork").setItems(arrayOf("Photo / image","Inkstone / PSD document")){_,i->if(i==0)activity.importImage()else activity.importDocument()}.show()
     }
     private fun artworkOptions(art:Artwork){
         if(activity.navigationBusy)return
@@ -172,7 +189,7 @@ class GalleryView(private val activity: MainActivity) : LinearLayout(activity) {
         val target=if(inside==null && destination!=null)"stack:$destination"else"destination:${destination?:"root"}"
         rebuild(true,target,release?.let{"art:${it.first}" to it.second})
     }
-    override fun onDetachedFromWindow(){motion?.cancel(this);motion=null;thumbnails.clear();super.onDetachedFromWindow()}
+    override fun onDetachedFromWindow(){removeCallbacks(resizeGallery);motion?.cancel(this);motion=null;thumbnails.clear();super.onDetachedFromWindow()}
     private fun createStack(ids:List<String> = emptyList()){
         activity.textDialog("Stack name","New stack"){name->val id=activity.store.createStack(name);if(ids.isNotEmpty())activity.store.assignStack(ids,id);inside=null;prefs.edit().remove("inside").apply();selected.clear();selecting=false;rebuild(true)}
     }

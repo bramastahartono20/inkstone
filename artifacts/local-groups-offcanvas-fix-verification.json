@@ -1,0 +1,52 @@
+{
+  "apk": "inkstone-0.20-groups-offcanvas-fix.apk",
+  "sha256": "6f17c55dc997b5a6d653afb94487255c2623c23406ba32a7de8dfe0e5dd36eb8",
+  "bytes": 15413986,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4372672,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1101832,
+          "alignment": 16384
+        },
+        {
+          "offset": 4234288,
+          "alignment": 16384
+        },
+        {
+          "offset": 4367392,
+          "alignment": 16384
+        }
+      ]
+    },
+    "x86_64": {
+      "bytes": 4955224,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1170960,
+          "alignment": 16384
+        },
+        {
+          "offset": 4806672,
+          "alignment": 16384
+        },
+        {
+          "offset": 4949896,
+          "alignment": 16384
+        }
+      ]
+    }
+  },
+  "static_checks_passed": true
+}

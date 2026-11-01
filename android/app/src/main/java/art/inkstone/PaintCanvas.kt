@@ -14,6 +14,8 @@ class PaintCanvas(context: Context, val session: DrawingSession) : View(context)
     internal val guides=DrawingGuide(context)
     internal val liquify=RasterLiquify(this,session)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val visibleArea=RectF()
+    private val inverseTransform=Matrix()
     private val transform = Matrix()
     private val inverse = Matrix()
     private var gestureStartZoom=1f
@@ -137,7 +139,6 @@ class PaintCanvas(context: Context, val session: DrawingSession) : View(context)
 
     init {
         isFocusable = true; contentDescription = "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo."
-        setLayerType(LAYER_TYPE_HARDWARE, null)
     }
 
     fun fit() {
@@ -292,7 +293,12 @@ class PaintCanvas(context: Context, val session: DrawingSession) : View(context)
         val fillSave=canvas.save()
         if(fillBefore!=null){val radius=hypot(max(fillCenter.x,w-fillCenter.x),max(fillCenter.y,h-fillCenter.y))*fillAmount
             canvas.clipPath(Path().apply{addCircle(fillCenter.x,fillCenter.y,radius,Path.Direction.CW)})}
-        if(!rasterTransform.draw(canvas))canvas.drawBitmap(session.bitmap, 0f, 0f, paint)
+        if(!rasterTransform.draw(canvas)){
+            // Tiles, not session.bitmap: a changed bitmap is re-uploaded whole, tiles only where painted.
+            visibleArea.set(0f,0f,width.toFloat(),height.toFloat())
+            if(transform.invert(inverseTransform))inverseTransform.mapRect(visibleArea)
+            session.display.draw(canvas,paint,visibleArea)
+        }
         canvas.restoreToCount(fillSave)
         guides.draw(canvas,w,h,zoom)
         liquify.draw(canvas,zoom)
@@ -405,7 +411,7 @@ class PaintCanvas(context: Context, val session: DrawingSession) : View(context)
         gestureX = x; gestureY = y; gestureDistance = distance; gestureAngle = angle; invalidate()
     }
     private fun checkQuickPinch(): Boolean {
-        if((context as? MainActivity)?.atlas!=null){gesturePinching=false;return false}
+
         if(gesturePinching && !session.canvasLocked && zoom<fitScale*.48f){gesturePinching=false;onAtlas();return true}
         if (!gesturePinching || !session.pinchToFit || session.canvasLocked) {
             gesturePinching = false
@@ -419,6 +425,7 @@ class PaintCanvas(context: Context, val session: DrawingSession) : View(context)
         val quickContraction = duration in 60..450 && ratio < 0.78f && gesturePinchVelocity > 0.08f * dp
         gesturePinching = false
         if ((fastPinch || quickContraction) && (zoom>=fitScale*.8f || gestureStartZoom>fitScale*1.1f)) {
+            (context as? MainActivity)?.atlas?.activateCurrent()
             animateFit()
             onGesture("Fit canvas")
             return true

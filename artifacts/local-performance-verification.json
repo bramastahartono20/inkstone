@@ -1,0 +1,167 @@
+{
+  "apk": "inkstone-0.22-local-performance-debug.apk",
+  "sha256": "b12e3641ed6ef082193dbc931197bb8e254eca79e48b7d085c2bb968c790bf8b",
+  "bytes": 15811770,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4426200,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1108800,
+          "alignment": 16384
+        },
+        {
+          "offset": 4286832,
+          "alignment": 16384
+        },
+        {
+          "offset": 4420920,
+          "alignment": 16384
+        }
+      ],
+      "matches_rebuilt_native_library": true
+    },
+    "x86_64": {
+      "bytes": 5025328,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1178544,
+          "alignment": 16384
+        },
+        {
+          "offset": 4875760,
+          "alignment": 16384
+        },
+        {
+          "offset": 5020000,
+          "alignment": 16384
+        }
+      ],
+      "matches_rebuilt_native_library": true
+    }
+  },
+  "static_checks_passed": true,
+  "published": false,
+  "device_tested": false,
+  "reported_device": "Xiaomi Pad 7, more than 20 layers",
+  "base_commit": "85ecd15c3800e7579735cacca1a5b493dfd7f91e",
+  "previous_local_apk_sha256": "f662428c2bc6b7c2fc67306536bc8d41c82d0a9fdebb2c656fe587380e52e2eb",
+  "native_cpu_tests": {
+    "passed": 116,
+    "failed": 0
+  },
+  "android_tests": {
+    "tests": 140,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "android_lint": {
+    "errors": 0,
+    "warnings": 132
+  },
+  "benchmarks": {
+    "frame24": {
+      "before": {
+        "first10_stroke_avg_ms": 25.035799899999994,
+        "frame_p50_ms": 3.1145840000000002,
+        "frame_p95_ms": 5.172167,
+        "frames": 640,
+        "last10_stroke_avg_ms": 26.0944751,
+        "layers": 24,
+        "note": "Host CPU workload, not Android display latency",
+        "strokes": 80
+      },
+      "after": {
+        "first10_stroke_avg_ms": 3.4368501,
+        "frame_p50_ms": 0.041208,
+        "frame_p95_ms": 0.062541,
+        "frames": 640,
+        "last10_stroke_avg_ms": 3.6195414999999995,
+        "layers": 24,
+        "note": "Host CPU workload, not Android display latency",
+        "strokes": 80
+      }
+    },
+    "shapes": {
+      "before": {
+        "canvas": [
+          1600,
+          1200
+        ],
+        "mean_patch_pixels": 1904117,
+        "note": "Host CPU workload including rasterization and patch compositing",
+        "resize_p50_ms": 18.808417000000002,
+        "resize_p95_ms": 19.919458000000002,
+        "resizes": 120
+      },
+      "after": {
+        "canvas": [
+          1600,
+          1200
+        ],
+        "mean_patch_pixels": 31656,
+        "note": "Host CPU workload including rasterization and patch compositing",
+        "resize_p50_ms": 1.2312919999999998,
+        "resize_p95_ms": 1.569416,
+        "resizes": 120
+      }
+    },
+    "history": {
+      "before": {
+        "canvas": [
+          2048,
+          1536
+        ],
+        "first10_stroke_avg_ms": 13.644716800000001,
+        "last10_stroke_avg_ms": 8.8261874,
+        "note": "Host CPU and undo-cache workload; no Android rendering or input",
+        "stroke_p95_ms": 14.183167,
+        "strokes": 100,
+        "undo_steps": 64
+      },
+      "after": {
+        "canvas": [
+          2048,
+          1536
+        ],
+        "first10_stroke_avg_ms": 8.0812083,
+        "last10_stroke_avg_ms": 5.653370699999999,
+        "note": "Host CPU and undo-cache workload; no Android rendering or input",
+        "stroke_p95_ms": 6.8692079999999995,
+        "strokes": 100,
+        "undo_steps": 64
+      }
+    }
+  },
+  "source_sha256": {
+    "crates/ink-engine/src/lib.rs": "7e786ff6d359e143787e565438c44abee67ba0bae4b485a76e61974a541558a3",
+    "crates/ink-engine/src/android.rs": "c4901fe02aa5b9bf7bf9426dd71593b7b9bb9e539151488d18cf72aabb892d9e",
+    "crates/ink-engine/src/composite_cache.rs": "d4b3a9b0b83024fdd7d60d623e365e77ae671342a06b4cf8458074728a5ce6e2",
+    "crates/ink-engine/src/groups.rs": "2244ac169c1f18fe7d3413a1e00a892813f82e6e961d723a064b96f7025f4872",
+    "crates/ink-engine/src/history.rs": "bb3b9cc5287b8f0224d0fc26e797088b3a14a9f655bf73e99f7a7d6572ea9b06",
+    "crates/ink-engine/src/exterior.rs": "6c65b1663d9e4143525edc92b92f9cfb9a2eccad83e14e7a531de416fab3c260",
+    "android/app/src/main/java/art/inkstone/DrawingSession.kt": "7abd78f74fa596842356b325626c316a48853d71870e11915201cf42048741ce",
+    "android/app/src/main/java/art/inkstone/QuickShapeEdit.kt": "cd0f40892947e683fd1bd826e01bf9f458a213bdc07f2d4283a5c5984bbe7ab5"
+  },
+  "physical_metal_tests": {
+    "passed": 15,
+    "failed": 0
+  },
+  "apk_signing": {
+    "verified": true,
+    "scheme": "v2",
+    "certificate_sha256": "23bd46ca626fc975136cf1b2b2772a3d56df2e3a7ddd28899a660880f498e5d3"
+  },
+  "total_tests_passed": 271
+}

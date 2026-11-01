@@ -1,0 +1,85 @@
+{
+  "apk": "inkstone-0.22-local-inkflow-debug.apk",
+  "sha256": "f662428c2bc6b7c2fc67306536bc8d41c82d0a9fdebb2c656fe587380e52e2eb",
+  "bytes": 15774778,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4398016,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1106052,
+          "alignment": 16384
+        },
+        {
+          "offset": 4259488,
+          "alignment": 16384
+        },
+        {
+          "offset": 4392736,
+          "alignment": 16384
+        }
+      ],
+      "matches_rebuilt_native_library": true
+    },
+    "x86_64": {
+      "bytes": 4988336,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1175184,
+          "alignment": 16384
+        },
+        {
+          "offset": 4839632,
+          "alignment": 16384
+        },
+        {
+          "offset": 4983008,
+          "alignment": 16384
+        }
+      ],
+      "matches_rebuilt_native_library": true
+    }
+  },
+  "static_checks_passed": true,
+  "published": false,
+  "base_commit": "85ecd15c3800e7579735cacca1a5b493dfd7f91e",
+  "native_cpu_tests": {
+    "passed": 110,
+    "failed": 0
+  },
+  "physical_metal_tests": {
+    "passed": 13,
+    "failed": 0
+  },
+  "android_tests": {
+    "tests": 137,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "android_lint": {
+    "errors": 0,
+    "warnings": 132
+  },
+  "device_tested": false,
+  "engine_name": "Inkflow (working name)",
+  "host_probe": {
+    "events": 800,
+    "includes_gpu_flush_every_four_events": false,
+    "note": "Host timing only; excludes Android input, frame transfer and display latency",
+    "renderer": "cpu",
+    "sample_max_ms": 0.470458,
+    "sample_p50_ms": 0.071875,
+    "sample_p95_ms": 0.31666700000000003
+  }
+}

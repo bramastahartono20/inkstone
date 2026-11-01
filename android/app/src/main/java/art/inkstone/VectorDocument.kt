@@ -245,7 +245,7 @@ internal class VectorDocument(val width:Int,val height:Int,val dpi:Int=300,var b
     }
     companion object {
         const val MAX_BYTES=16*1024*1024
-        fun isVector(bytes:ByteArray)=runCatching{JSONObject(bytes.toString(Charsets.UTF_8)).optString("mode")=="vector"}.getOrDefault(false)
+        fun isVector(bytes:ByteArray)=!DocumentStore.isBinary(bytes) && runCatching{JSONObject(bytes.toString(Charsets.UTF_8)).optString("mode")=="vector"}.getOrDefault(false)
         fun drawObject(canvas:Canvas,obj:VectorObject,paint:Paint=Paint(Paint.ANTI_ALIAS_FLAG)){
             val save=canvas.save();canvas.concat(obj.matrix);paint.strokeCap=Paint.Cap.ROUND;paint.strokeJoin=Paint.Join.ROUND
             obj.fill?.let{paint.style=Paint.Style.FILL;paint.color=it;canvas.drawPath(obj.path(),paint)}

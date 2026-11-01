@@ -419,7 +419,7 @@ impl Engine {
                         return Err("PSD exceeds the layer memory budget".into());
                     }
                     let id = layers.len() as u32 + 1;
-                    layers.push(Layer {exterior:Default::default(),group_id:None,group_visible:true,group_locked:false,
+                    layers.push(Layer {adjustment:None,exterior:Default::default(),group_id:None,group_visible:true,group_locked:false,
                         id,
                         name: record.name,
                         visible: record.visible,
@@ -430,7 +430,7 @@ impl Engine {
                         clipping: record.clipping,
                         mask_enabled: record.mask.is_none_or(|(_, _, flags)| flags & 2 == 0),
                         mask,
-                        pixels: Arc::new(pixels),
+                        pixels: crate::tiles::Tiles::from_flat(&pixels,w,h),
                     });
                 }
                 if !layers.is_empty() {
@@ -446,7 +446,7 @@ impl Engine {
             return Err("Flattened PSD files with additional channels are not supported".into());
         }
         let merged = unpack(r.bytes(r.remaining())?, w, h * channel_count)?;
-        let pixels = Arc::make_mut(&mut e.state.layers[0].pixels);
+        let mut pixels = e.state.layers[0].pixels.to_vec();
         for (i, p) in pixels.iter_mut().enumerate() {
             let a = if channel_count == 4 {
                 merged[3 * w * h + i] as u32
@@ -465,6 +465,7 @@ impl Engine {
             }
             *p = c | (a << 24);
         }
+        e.state.layers[0].pixels = crate::tiles::Tiles::from_flat(&pixels, e.width, e.height);
         warn(
             &mut warnings,
             "This PSD has no editable layer records; its merged image was imported as one layer.",

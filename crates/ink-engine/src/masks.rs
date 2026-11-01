@@ -110,10 +110,12 @@ impl Engine {
                 "apply" => {
                     let mask = l.mask.take().unwrap();
                     if l.mask_enabled {
-                        for (i, p) in Arc::make_mut(&mut l.pixels).iter_mut().enumerate() {
+                        let (w,h)=(l.pixels.width(),l.pixels.height());let mut flat=l.pixels.to_vec();
+                        for (i, p) in flat.iter_mut().enumerate() {
                             let a = ((*p >> 24) * mask[i] as u32 + 127) / 255;
                             *p = (*p & 0xffffff) | (a << 24);
                         }
+                        l.pixels = crate::tiles::Tiles::from_flat(&flat,w,h);
                     }
                     l.mask_enabled = true;
                 }

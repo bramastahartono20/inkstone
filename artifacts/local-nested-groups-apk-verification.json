@@ -1,0 +1,52 @@
+{
+  "apk": "inkstone-0.20-nested-groups-test.apk",
+  "sha256": "505a675b79b2704dcead2cdd48679d9b5d2170a97d5025494c599e8798f8aa14",
+  "bytes": 15401538,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4362792,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1100984,
+          "alignment": 16384
+        },
+        {
+          "offset": 4224672,
+          "alignment": 16384
+        },
+        {
+          "offset": 4357512,
+          "alignment": 16384
+        }
+      ]
+    },
+    "x86_64": {
+      "bytes": 4942776,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1170000,
+          "alignment": 16384
+        },
+        {
+          "offset": 4794464,
+          "alignment": 16384
+        },
+        {
+          "offset": 4937448,
+          "alignment": 16384
+        }
+      ]
+    }
+  },
+  "static_checks_passed": true
+}

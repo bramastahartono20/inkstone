@@ -61,17 +61,17 @@ impl Engine{
             "selectionPaste"=>self.paste_selection()?,
             "selectionClear"=>{if self.selection.is_none(){return Err("Make a selection first".into());}self.clear_selected()?;},
             "selectionFill"=>{
-                if self.selection.is_none(){return Err("Make a selection first".into());}self.ensure_edit_capacity()?;let before=self.state.layers[self.state.active].pixels.as_ref().clone();let color=v["color"].as_u64().unwrap_or(0xff202020) as u32;let lock=self.state.layers[self.state.active].alpha_lock;
-                let mut out=before.clone();for(i,p)in out.iter_mut().enumerate(){let coverage=self.selection_coverage(i) as f32/255.0;let ink=if lock{(color&0xffffff)|(*p&0xff000000)}else{color};*p=mix_rgba(*p,ink,coverage);}
-                self.state.layers[self.state.active].pixels=Arc::new(out);self.pixel_change(self.state.active,before);
+                if self.selection.is_none(){return Err("Make a selection first".into());}self.ensure_edit_capacity()?;let before=self.state.layers[self.state.active].pixels.clone();let color=v["color"].as_u64().unwrap_or(0xff202020) as u32;let lock=self.state.layers[self.state.active].alpha_lock;
+                let mut out=before.to_vec();for(i,p)in out.iter_mut().enumerate(){let coverage=self.selection_coverage(i) as f32/255.0;let ink=if lock{(color&0xffffff)|(*p&0xff000000)}else{color};*p=mix_rgba(*p,ink,coverage);}
+                self.state.layers[self.state.active].pixels=crate::tiles::Tiles::from_flat(&out,self.width,self.height);self.pixel_change(self.state.active,before);
             },
             _=>return Err("Unknown selection operation".into()),
         }Ok(self.info())
     }
     fn clear_selected(&mut self)->Result<(),String>{
-        let before=self.state.layers[self.state.active].pixels.as_ref().clone();let mut out=before.clone();
+        let before=self.state.layers[self.state.active].pixels.clone();let mut out=before.to_vec();
         for(i,p)in out.iter_mut().enumerate(){*p=(*p&0xffffff)|(((((*p>>24)*(255-self.selection_coverage(i) as u32))+127)/255)<<24);}
-        self.state.layers[self.state.active].pixels=Arc::new(out);self.pixel_change(self.state.active,before);Ok(())
+        self.state.layers[self.state.active].pixels=crate::tiles::Tiles::from_flat(&out,self.width,self.height);self.pixel_change(self.state.active,before);Ok(())
     }
     fn paste_selection(&mut self)->Result<(),String>{
         if self.next_id==u32::MAX{return Err("Layer identifiers exhausted".into());}
@@ -81,7 +81,8 @@ impl Engine{
         let (dx,dy)=if r[2]<=self.width && r[3]<=self.height{(r[0],r[1])}else{((self.width-dw)/2,(self.height-dh)/2)};
         for y in 0..dh{for x in 0..dw{pixels[(dy+y)*self.width+dx+x]=copy.pixels[(y*sh/dh)*sw+x*sw/dw];}}
 
-        self.structure(|e|{let id=e.next_id;e.next_id+=1;let mut layer=e.state.layers[e.state.active].clone();layer.id=id;layer.name="Pasted selection".into();layer.locked=false;layer.alpha_lock=false;layer.clipping=false;layer.mask=None;layer.mask_enabled=true;layer.opacity=1.;layer.blend="Normal".into();layer.pixels=Arc::new(pixels);layer.exterior.clear();e.state.active+=1;e.state.layers.insert(e.state.active,layer);});self.set_selection(None);Ok(())
+        let (w,h)=(self.width,self.height);
+        self.structure(|e|{let id=e.next_id;e.next_id+=1;let mut layer=e.state.layers[e.state.active].clone();layer.id=id;layer.name="Pasted selection".into();layer.locked=false;layer.alpha_lock=false;layer.clipping=false;layer.mask=None;layer.mask_enabled=true;layer.opacity=1.;layer.blend="Normal".into();layer.pixels=crate::tiles::Tiles::from_flat(&pixels,w,h);layer.exterior.clear();e.state.active+=1;e.state.layers.insert(e.state.active,layer);});self.set_selection(None);Ok(())
     }
 }
 

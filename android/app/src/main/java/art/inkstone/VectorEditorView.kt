@@ -60,7 +60,7 @@ internal class VectorEditorView(val activity:MainActivity,val document:VectorDoc
         nodeScroll=HorizontalScrollView(activity).apply{isHorizontalScrollBarEnabled=false;addView(nodeControls)}
         addView(nodeScroll,LayoutParams(min(dp(536),resources.displayMetrics.widthPixels-dp(80)),dp(44),Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply{leftMargin=dp(50);rightMargin=dp(8);bottomMargin=dp(if(compact)52 else 12)})
         canvas.onDismissPanel={dismissPanel()}
-        canvas.onChanged={activity.scheduleSave();refresh()};canvas.onSelection=::refresh
+        canvas.onChanged={activity.scheduleSave();activity.scheduleVectorRecording();refresh()};canvas.onSelection=::refresh
         buildToolbar()
         refresh()
     }
@@ -223,7 +223,7 @@ internal class VectorEditorView(val activity:MainActivity,val document:VectorDoc
             .show()
     }
     private fun actions(){panel("Actions",true){body->
-        for((label,action) in listOf<Pair<String,()->Unit>>("Canvas Atlas" to {dismissPanel();activity.showAtlas()},"Reference image" to {dismissPanel();showReference()},"Drawing guides" to {canvas.guides.settings(activity,{canvas.invalidate()},{canvas.cancelGesture();dismissPanel();refresh()})},"Import Inkstone / PSD" to {activity.importDocument()},"Stroke settings" to {strokeSettings()},"Object" to {objectActions()},"Fill" to {canvas.fillColor=if(canvas.fillColor==null)canvas.ink else null;canvas.edit{editableSelection()?.takeIf{it.isClosed}?.fill=canvas.fillColor}},"Fit" to {canvas.fit()},"Shortcut keys" to {shortcutSettings()},"Prefs" to {preferences()},"Save artwork" to {save()}))body.addView(button(label){action()},LinearLayout.LayoutParams(-1,dp(48)))
+        for((label,action) in listOf<Pair<String,()->Unit>>("Canvas Atlas" to {dismissPanel();activity.showAtlas()},"Reference image" to {dismissPanel();showReference()},"Drawing guides" to {canvas.guides.settings(activity,{canvas.invalidate()},{canvas.cancelGesture();dismissPanel();refresh()})},"Import Inkstone / PSD" to {activity.importDocument()},"Stroke settings" to {strokeSettings()},"Object" to {objectActions()},"Fill" to {canvas.fillColor=if(canvas.fillColor==null)canvas.ink else null;canvas.edit{editableSelection()?.takeIf{it.isClosed}?.fill=canvas.fillColor}},"Fit" to {canvas.fit()},"Shortcut keys" to {shortcutSettings()},"Prefs" to {preferences()},"Time-lapse" to {panel("Time-lapse",true){TimelapseControls.populate(activity,it)}},"Tutorials" to {dismissPanel();Tutorials.show(activity)},"Save artwork" to {save()}))body.addView(button(label){action()},LinearLayout.LayoutParams(-1,dp(48)))
         body.addView(TextView(activity).apply{text="Select an object to move it. Drag a corner to resize, the upper handle to rotate. Nodes selects anchors on the curve. Drag a selected anchor or its white handles; use Previous/Next and Point coordinates for precise edits.";setTextColor(0xffb9c2ca.toInt());setPadding(dp(8),dp(12),dp(8),dp(12))})
     }}
     private fun save(){

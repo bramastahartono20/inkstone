@@ -11,6 +11,10 @@ object NativeBridge {
         size: Float, opacity: Float, flow: Float, stabilization: Float, pressureSize: Float, pressureOpacity: Float, fadeLength:Float=0f, sampleStride:Int=4)
     external fun render(handle: Long, pixels: ByteBuffer, background: Boolean): Boolean
     external fun renderPatch(handle: Long, force: Boolean): IntArray?
+    /** Fills [out] with the interior patch (sized by [patchCapacity]); returns [x,y,w,h]+exterior tiles, or [-1,needed] if [out] is too small. */
+    external fun renderPatchInto(handle: Long, force: Boolean, out: IntArray): IntArray?
+    /** Pixel count the next [renderPatchInto] needs for its interior patch. */
+    external fun patchCapacity(handle: Long, force: Boolean): Int
     external fun preview(handle: Long): IntArray?
     external fun writePsd(handle: Long, path: String): String
     external fun save(handle: Long): ByteArray?

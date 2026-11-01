@@ -240,7 +240,7 @@ class StudioTest {
         assertEquals(295,session.canvasWidth);assertEquals(413,session.canvasHeight)
         assertTrue(CanvasPresets.custom(activity).any{it.width==295&&it.height==413&&it.dpi==150})
         var saved=false;activity.saveCurrent{assertTrue(it);saved=true};until{saved}
-        val doc=JSONObject(String(activity.store.read(activity.documentId)));assertEquals(150,doc.getInt("dpi"))
+        val doc=DocumentStore.header(activity.store.read(activity.documentId));assertEquals(150,doc.getInt("dpi"))
         shutdown(controller)
     }
     @Test fun layerBlendExpandsInlineAndSwipeActionsWork() {

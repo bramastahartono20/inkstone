@@ -1,0 +1,68 @@
+{
+  "apk": "inkstone-0.22-local-colors-atlas-adjustments-debug.apk",
+  "sha256": "54af1e7335b637717a4a17995c7222e6cbad8112ea531994e14bb815a64a14f2",
+  "bytes": 21952331,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4461336,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1112696,
+          "alignment": 16384
+        },
+        {
+          "offset": 4322032,
+          "alignment": 16384
+        },
+        {
+          "offset": 4456056,
+          "alignment": 16384
+        }
+      ]
+    },
+    "x86_64": {
+      "bytes": 5080576,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1182848,
+          "alignment": 16384
+        },
+        {
+          "offset": 4931040,
+          "alignment": 16384
+        },
+        {
+          "offset": 5075248,
+          "alignment": 16384
+        }
+      ]
+    }
+  },
+  "static_checks_passed": true,
+  "validation": {
+    "rust_cpu_tests": 129,
+    "android_full_tests": 157,
+    "final_tutorial_tests": 4,
+    "gpu_brush_parity": "passed",
+    "lint": "passed",
+    "assemble": "passed",
+    "native_byte_matches": true,
+    "physical_device_tested": false,
+    "published": false,
+    "limitations": [
+      "Blur is live raster adjustment, not an adjustment layer",
+      "Editable PSD adjustment layers unsupported",
+      "Atlas board quick-fit targets raster editor"
+    ]
+  }
+}

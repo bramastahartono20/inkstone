@@ -36,7 +36,7 @@ class WorkflowTest{
         s.size=20f;s.pressureSize=0f;s.stabilization=0f;s.stroke(0,floatArrayOf(32f,32f,1f,0f));s.stroke(2,floatArrayOf());until{s.bitmap.getPixel(32,32)==Color.WHITE};render(e,"mask-hidden-center")
         click(e,"White reveals");s.stroke(0,floatArrayOf(32f,32f,1f,0f));s.stroke(2,floatArrayOf());until{s.bitmap.getPixel(32,32)==0xffdd5020.toInt()}
         click(e,"Layer pixels");until{!s.info.optBoolean("maskEditing") && s.color==0xff2468ab.toInt()};assertEquals(0xff2468ab.toInt(),s.color)
-        var bytes:ByteArray?=null;s.documentSnapshot{bytes=it};until{bytes!=null};val saved=JSONObject(String(bytes!!));assertNotNull(saved.getJSONArray("layers").getJSONObject(0).getJSONArray("mask"))
+        var bytes:ByteArray?=null;s.documentSnapshot{bytes=it};until{bytes!=null};val saved=DocumentStore.header(bytes!!);assertNotNull(saved.getJSONArray("layers").getJSONObject(0).getJSONArray("mask"))
         var savedOK=false;a.saveCurrent{savedOK=it};until{savedOK};val art=a.store.list().first{it.id==a.documentId};a.showGallery();a.openArtwork(art);until{a.editor!=null && a.session!==s};assertTrue(a.session!!.info.getJSONArray("layers").getJSONObject(0).getBoolean("hasMask"));done(c)
     }
     @Test fun symmetrySettingsPersistAndGenerateFourCopies(){

@@ -93,6 +93,43 @@ class MainActivity : Activity() {
     private var onImported: ((Uri) -> Unit)? = null
     var lastInputDescription = "Draw with your pen to inspect its input capabilities."
     private val prefs by lazy { getSharedPreferences("studio", MODE_PRIVATE) }
+    private val timelapseDelegate:Lazy<TimelapseRecorder> =lazy{TimelapseRecorder(this,updated={timelapseExportProgress?.progress(timelapse.progress)},error={message(it)})}
+    internal val timelapse:TimelapseRecorder by timelapseDelegate
+    private val vectorRecording=object:Runnable{
+        override fun run(){
+            val id=documentId
+            if(vectorDocument==null || !timelapse.shouldCapture(id))return
+            if(vectorEditor?.busy==true){handler.postDelayed(this,500);return}
+            timelapseImage{image->if(image!=null){if(documentId==id && vectorDocument!=null)timelapse.capture(id,image);image.recycle()}}
+        }
+    }
+    internal fun scheduleVectorRecording(){handler.removeCallbacks(vectorRecording);handler.postDelayed(vectorRecording,500)}
+    private fun timelapseImage(then:(Bitmap?)->Unit){
+        if(vectorDocument!=null){val bytes=vectorEditor?.snapshotBytes()?:vectorDocument!!.encode();io.execute{val result=runCatching{VectorDocument.decode(bytes).bitmap(960)};runOnUiThread{if(isDestroyed)result.getOrNull()?.recycle()else then(result.getOrNull())}}}
+        else session?.imageSnapshot(then)?:then(null)
+    }
+    private var timelapseExportProgress:TimelapseExportProgress?=null
+    private var timelapseExportBusy=false
+    internal fun exportTimelapse(){
+        val id=documentId;val exportName=documentName
+        if(timelapseExportBusy){timelapseExportProgress?.show();return}
+        timelapseExportBusy=true
+        timelapseExportProgress?.dismiss()
+        val progress=TimelapseExportProgress(this).also{timelapseExportProgress=it;it.preparing()}
+        session?.beforeSnapshot?.invoke()
+        timelapseImage{image->
+            if(image==null){timelapseExportBusy=false;progress.state("Could not prepare artwork. Please try again.");return@timelapseImage}
+            if(documentId!=id){image.recycle();timelapseExportBusy=false;progress.dismiss();return@timelapseImage}
+            timelapse.export(id,image,timelapse.duration(id)){file,error->
+                if(error!=null){timelapseExportBusy=false;progress.state("Export failed: $error")}
+                else if(file!=null){
+                    progress.state("Video ready. Choose where to save it.")
+                    chooseExport("mp4","video/mp4",{file.delete()},exportName,onSaveState={state->if(state!="Saving video…")timelapseExportBusy=false;progress.state(state)}){out->file.inputStream().use{it.copyTo(out)}}
+                }
+            }
+            image.recycle()
+        }
+    }
 
     var recordingShortcutAction: String? = null; private set
     private var onShortcutRecorded: ((String, KeyShortcut) -> Unit)? = null
@@ -212,9 +249,9 @@ class MainActivity : Activity() {
     }
     private fun openVector(doc:VectorDocument,id:String,name:String){
         session?.close();session=null;editor=null;canvasSetup=null;canvasPopup?.dismiss();canvasPopup=null
-        vectorDocument=doc;documentId=id;documentName=name
+        vectorDocument=doc;documentId=id;documentName=name;timelapse.prepare(id)
         atlas?.refresh();atlas?.activateCurrent()
-        vectorEditor=VectorEditorView(this,doc);setContentView(vectorEditor);vectorEditor?.let{if(atlas==null)StudioMotion.canvasEnter(it)}
+        vectorEditor=VectorEditorView(this,doc);setContentView(vectorEditor);vectorEditor?.let{if(atlas==null)StudioMotion.canvasEnter(it);it.post{if(vectorEditor===it && it.isAttachedToWindow)Tutorials.welcome(this)}};scheduleVectorRecording()
     }
     private fun loadedDocument(bytes:ByteArray,id:String,name:String,existingTicket:Long?=null){
         val ticket=existingTicket?:beginNavigation("Opening $name…")?:return
@@ -281,7 +318,7 @@ class MainActivity : Activity() {
             b.pressureSize=prefs.getFloat("${key}_pressureSize",b.preset.pressureSize)
             b.pressureOpacity=prefs.getFloat("${key}_pressureOpacity",b.preset.pressureOpacity)
             b.fadeLength=prefs.getFloat("${key}_fadeLength",b.preset.fadeLength)
-            b.kind=prefs.getInt("${key}_kind",b.preset.kind).coerceIn(0,14);b.colorLayout=prefs.getString("${key}_layout",b.preset.colorLayout)?:"Along"
+            b.kind=prefs.getInt("${key}_kind",b.preset.kind).takeIf{it in 0..14 || it in 32..42}?:b.preset.kind;b.colorLayout=prefs.getString("${key}_layout",b.preset.colorLayout)?:"Along"
             b.colorMode=prefs.getString("${key}_colorMode",b.preset.colorMode)?:"Solid";b.colorCycle=prefs.getFloat("${key}_cycle",b.preset.colorCycle);b.wetMix=prefs.getFloat("${key}_mix",b.preset.wetMix);b.wetPickup=prefs.getFloat("${key}_pickup",b.preset.wetPickup).coerceIn(0f,1f);b.wetness=prefs.getFloat("${key}_wetness",b.preset.wetness).coerceIn(0f,1f);b.palette=runCatching{val a=org.json.JSONArray(prefs.getString("${key}_palette",org.json.JSONArray(b.preset.palette).toString()));(0 until a.length().coerceAtMost(12)).map{a.getLong(it).toInt()}}.getOrDefault(b.preset.palette)
         }
         restoreBrush(s.paintBrush, "paint_brush")
@@ -311,12 +348,15 @@ class MainActivity : Activity() {
     }
     private fun openEditor() {
         val s = session ?: return
+        timelapse.prepare(documentId)
         atlas?.refresh();atlas?.activateCurrent()
         editor = EditorView(this, s)
-        setContentView(editor);editor?.let{if(atlas==null)StudioMotion.canvasEnter(it)}; s.requestRender()
+        setContentView(editor);editor?.let{view->if(atlas==null)StudioMotion.canvasEnter(view);view.post{if(editor===view && view.isAttachedToWindow)Tutorials.welcome(this)}}
+        s.onCommittedFrame={image->if(session===s && timelapse.enabled(documentId))timelapse.capture(documentId,image)}
+        s.captureNextFrame()
     }
     fun deferAutosave(){handler.removeCallbacks(autosave)}
-    fun scheduleSave() { handler.removeCallbacks(autosave); handler.postDelayed(autosave, 1800) }
+    fun scheduleSave() { handler.removeCallbacks(autosave); handler.postDelayed(autosave, 8000) }
     fun saveCurrent(then: (Boolean) -> Unit = {}) {
         handler.removeCallbacks(autosave)
         vectorDocument?.let{doc->
@@ -347,7 +387,7 @@ class MainActivity : Activity() {
         canvasSetup=null;canvasPopup?.dismiss();canvasPopup=null
         session?.close(); session = null
         editor = null;vectorDocument=null;vectorEditor=null
-        setContentView(GalleryView(this).also{StudioMotion.canvasEnter(it)})
+        setContentView(GalleryView(this).also{view->StudioMotion.canvasEnter(view);view.post{if(view.isAttachedToWindow)Tutorials.welcome(this)}})
     }
     fun openArtwork(art: Artwork) {
         val ticket=beginNavigation("Opening ${art.name}…",art.id)?:return
@@ -385,20 +425,20 @@ class MainActivity : Activity() {
     }
     private var pendingExportCleanup:(()->Unit)?=null
     private var pendingGalleryKind:String?=null
-    private fun chooseExport(suffix:String,mime:String,cleanup:()->Unit={},write:(java.io.OutputStream)->Unit){
+    private fun chooseExport(suffix:String,mime:String,cleanup:()->Unit={},nameOverride:String?=null,onSaveState:(String)->Unit={},write:(java.io.OutputStream)->Unit){
         if(isDestroyed){cleanup();return}
-        pendingExportCleanup?.invoke();pendingExportCleanup=cleanup
-        val name=documentName
-        pendingExport={uri->io.execute{
+        pendingExportCleanup?.invoke();pendingExportCleanup={cleanup();onSaveState("Save cancelled")}
+        val name=nameOverride?:documentName
+        pendingExport={uri->onSaveState("Saving video…");io.execute{
             val result=runCatching{contentResolver.openOutputStream(uri,"wt").use{write(checkNotNull(it){"No output stream"})}}
             cleanup()
-            runOnUiThread{result.onSuccess{message("Exported $name.$suffix")}.onFailure{message("Export failed: ${it.message}")}}
+            runOnUiThread{if(!isDestroyed)result.onSuccess{onSaveState("Saved · $name.$suffix");message("Exported $name.$suffix")}.onFailure{onSaveState("Save failed: ${it.message}");message("Export failed: ${it.message}")}}
         }}
         val intent=Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(mime).putExtra(Intent.EXTRA_TITLE,"$name.$suffix")
         try{
             @Suppress("DEPRECATION")
             startActivityForResult(intent,100)
-        }catch(e:Exception){pendingExport=null;pendingExportCleanup=null;cleanup();message("Could not open file picker: ${e.message}")}
+        }catch(e:Exception){pendingExport=null;pendingExportCleanup=null;cleanup();onSaveState("Could not open file picker: ${e.message}");message("Could not open file picker: ${e.message}")}
     }
     fun export(kind:String){
         if(vectorDocument!=null){exportVector(kind);return}
@@ -414,7 +454,7 @@ class MainActivity : Activity() {
             }
             "Inkstone"->s.documentSnapshot{bytes->
                 if(bytes==null)message("Could not export artwork")
-                else chooseExport("inkstone","application/octet-stream"){output->GZIPOutputStream(output).use{it.write(bytes)}}
+                else chooseExport("inkstone","application/octet-stream"){output->DocumentStore.encode(output,bytes)}
             }
             "PNG","JPEG"->s.imageSnapshot{image->
                 if(image==null)message("Could not export artwork")
@@ -538,7 +578,7 @@ class MainActivity : Activity() {
     fun message(text: String) { if (!isDestroyed) Toast.makeText(this, text, Toast.LENGTH_LONG).show() }
     override fun onWindowFocusChanged(hasFocus:Boolean){super.onWindowFocusChanged(hasFocus);if(!hasFocus)editor?.canvas?.stylusButtons?.reset()}
     override fun onPause() { cancelRecordingShortcut();editor?.canvas?.stylusButtons?.reset();super.onPause(); saveCurrent() }
-    override fun onDestroy() { closeAtlas();cancelNavigation();pendingExportCleanup?.invoke();pendingExportCleanup=null;pendingExport=null;handler.removeCallbacks(autosave); session?.close(); io.shutdown(); super.onDestroy() }
+    override fun onDestroy() { timelapseExportProgress?.dismiss();timelapseExportProgress=null;Tutorials.dismiss(this);closeAtlas();cancelNavigation();pendingExportCleanup?.invoke();pendingExportCleanup=null;pendingExport=null;handler.removeCallbacks(autosave);handler.removeCallbacks(vectorRecording);if(timelapseDelegate.isInitialized())timelapse.close();session?.close(); io.shutdown(); super.onDestroy() }
     @Deprecated("Native back handling")
     override fun onBackPressed() { if(navigationBusy){cancelNavigation();return};if(atlas!=null){closeAtlas(true);editor?.canvas?.animateFit();vectorEditor?.canvas?.fit();return};if(canvasSetup!=null){showGallery();return};if(canvasPopup?.isShowing==true){canvasPopup?.dismiss();return}; if(vectorEditor!=null){if(vectorEditor?.dismissPanel()!=true)gallery();return};if (editor != null) { if (!editor!!.dismissPanel()) gallery() } else {val gallery=(findViewById<android.view.ViewGroup>(android.R.id.content)?.getChildAt(0) as? GalleryView);if(gallery?.handleBack()!=true)super.onBackPressed()} }
     internal fun recordShortcutKey(event:KeyEvent):Boolean {

@@ -8,6 +8,7 @@ internal class QuickShapeEdit(private val canvas:PaintCanvas,private val session
     var active=false;private set
     var released=false;private set
     var name="";private set
+    private var mappedPoints:FloatArray?=null
     private var samples=FloatArray(0)
     private var beforeSamples=FloatArray(0)
     private val matrix=Matrix();private var original=Matrix();private var start=PointF();private var pivot=PointF();private var mode="";private var handle=-1
@@ -21,12 +22,13 @@ internal class QuickShapeEdit(private val canvas:PaintCanvas,private val session
     fun start(fit:QuickShape.Fit){
         active=true;released=false;name=fit.name;samples=fit.samples.clone();matrix.reset();brush=settings();preview();changed()
     }
-    private fun points():FloatArray{val p=FloatArray(samples.size/2);for(i in samples.indices step 4){p[i/2]=samples[i];p[i/2+1]=samples[i+1]};matrix.mapPoints(p);return p}
+    private fun points():FloatArray{mappedPoints?.let{return it};val p=FloatArray(samples.size/2);for(i in samples.indices step 4){p[i/2]=samples[i];p[i/2+1]=samples[i+1]};matrix.mapPoints(p);mappedPoints=p;return p}
     private fun box():RectF{val p=points();return RectF((p.indices step 2).minOf{p[it]},(p.indices step 2).minOf{p[it+1]},(p.indices step 2).maxOf{p[it]},(p.indices step 2).maxOf{p[it+1]})}
     internal fun bounds()=box()
     private fun corners(r:RectF)=listOf(PointF(r.left,r.top),PointF(r.right,r.top),PointF(r.right,r.bottom),PointF(r.left,r.bottom))
     private fun preview(){
         if(!active)return
+        mappedPoints=null
         val prior=settings();brush?.let(::apply);val smooth=session.stabilization;session.stabilization=0f
         val xy=points();val out=samples.clone();for(i in samples.indices step 4){out[i]=xy[i/2];out[i+1]=xy[i/2+1]}
         session.previewQuickShape(out);session.stabilization=smooth;apply(prior);canvas.invalidate()

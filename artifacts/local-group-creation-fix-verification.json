@@ -1,0 +1,52 @@
+{
+  "apk": "inkstone-0.20-group-creation-fix.apk",
+  "sha256": "7846dc039df8e1704ee00e03f0bd07f41e9869e9538e52a9d26c382f5a5d10f6",
+  "bytes": 15416690,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4374368,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1102024,
+          "alignment": 16384
+        },
+        {
+          "offset": 4235984,
+          "alignment": 16384
+        },
+        {
+          "offset": 4369088,
+          "alignment": 16384
+        }
+      ]
+    },
+    "x86_64": {
+      "bytes": 4957928,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1171056,
+          "alignment": 16384
+        },
+        {
+          "offset": 4809376,
+          "alignment": 16384
+        },
+        {
+          "offset": 4952600,
+          "alignment": 16384
+        }
+      ]
+    }
+  },
+  "static_checks_passed": true
+}

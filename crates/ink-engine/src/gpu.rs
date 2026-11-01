@@ -2,11 +2,13 @@ use crate::{Layer, Sample};
 use bytemuck::{Pod, Zeroable};
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex, Weak},
+    sync::{Arc, Mutex},
     time::Duration,
 };
 
-const CACHE_BYTES: usize = 128 * 1024 * 1024;
+// Hold every layer the canvas budget allows (PIXEL_BUDGET is in bytes after the *4) plus headroom
+// for one transient layer. A smaller cache evicts and re-uploads the whole stack on every frame.
+const CACHE_BYTES: usize = crate::PIXEL_BUDGET * 4 + 64 * 1024 * 1024;
 pub const MAX_DABS: usize = 128;
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -19,6 +21,9 @@ pub struct Params {
     pub palette:[u32;12],
     pub color_effect:[f32;4],
     pub direction:[f32;4],
+    /// Paint Mixing: x = 1 when `contact` holds the 9 × 9 wet contact field, y = wet-edge strength.
+    pub wet:[f32;4],
+    pub contact:[[u32;4];21],
 }
 pub struct Dab {
     pub brush: super::Brush,
@@ -28,7 +33,8 @@ pub struct Dab {
 }
 struct CachedLayer {
     buffer: wgpu::Buffer,
-    source: Weak<Vec<u32>>,
+    /// Generation of the CPU pixels this buffer holds; None until the first upload.
+    source: Option<u64>,
     used: u64,
 }
 pub struct Gpu {
@@ -236,6 +242,11 @@ impl Gpu {
             mapped_at_creation: false,
         })
     }
+    /// Drops the resident copy of a layer; the next composite or paint uploads its CPU pixels again.
+    pub fn forget_layer(&mut self, id: u32) {
+        self.layers.remove(&id);
+    }
+
     pub fn selection(&mut self, selection: Option<&[bool]>, alpha:Option<&[u8]>) {
         let values: Vec<u32> = selection
             .map(|s| s.iter().enumerate().map(|(i,v)|alpha.map_or(if *v{255}else{0},|a|a[i] as u32)).collect())
@@ -277,24 +288,22 @@ impl Gpu {
                 layer.id,
                 CachedLayer {
                     buffer,
-                    source: Weak::new(),
+                    source: None,
                     used: self.tick,
                 },
             );
         }
         let cached = self.layers.get_mut(&layer.id).unwrap();
         cached.used = self.tick;
-        if !cached
-            .source
-            .upgrade()
-            .is_some_and(|v| Arc::ptr_eq(&v, &layer.pixels))
+        if cached.source != Some(layer.pixels.generation())
         {
+            let flat = layer.pixels.to_vec();
             self.queue.write_buffer(
                 &cached.buffer,
                 0,
-                bytemuck::cast_slice(layer.pixels.as_slice()),
+                bytemuck::cast_slice(&flat),
             );
-            cached.source = Arc::downgrade(&layer.pixels);
+            cached.source = Some(layer.pixels.generation());
         }
         Ok(())
     }
@@ -319,13 +328,10 @@ impl Gpu {
         let (values, tip) = result?;
         let [x, y, x1, y1] = rect;
         let w = x1 - x;
-        let pixels = Arc::make_mut(&mut layer.pixels);
-        let width = dabs[0].params.meta[0] as usize;
         for row in 0..y1 - y {
-            pixels[(y + row) * width + x..(y + row) * width + x1]
-                .copy_from_slice(&values[row * w..(row + 1) * w]);
+            layer.pixels.set_row(y + row, x, &values[row * w..(row + 1) * w]);
         }
-        self.layers.get_mut(&layer.id).unwrap().source = Arc::downgrade(&layer.pixels);
+        self.layers.get_mut(&layer.id).unwrap().source = Some(layer.pixels.generation());
         self.batches += 1;
         self.dabs += dabs.len() as u64;
         Ok(tip)
@@ -341,11 +347,12 @@ impl Gpu {
         let [x, y, x1, y1] = rect;
         let w = x1 - x;
         let h = y1 - y;
-        let stride = self
+        let align = self
             .device
             .limits()
             .min_uniform_buffer_offset_alignment
             .max(256) as usize;
+        let stride = std::mem::size_of::<Params>().div_ceil(align) * align;
         let mut data = vec![0u8; (dabs.len() + 1) * stride];
         for (i, dab) in dabs.iter().enumerate() {
             data[i * stride..i * stride + std::mem::size_of::<Params>()].copy_from_slice(bytemuck::bytes_of(&dab.params));

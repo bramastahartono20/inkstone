@@ -18,6 +18,24 @@ internal class RecentColorRow(context:Context,choose:(Int)->Unit):LinearLayout(c
         addView(TextView(context).apply{text="Recent colours";textSize=13f;setTextColor(theme.secondary);setPadding(0,(10*d).toInt(),0,(6*d).toInt())})
         val values=RecentColors(context).list()
         if(values.isEmpty())addView(TextView(context).apply{text="Colors you draw or fill with appear here.";textSize=12f;setTextColor(theme.secondary);setPadding(0,0,0,(8*d).toInt())})
-        else{val row=LinearLayout(context);values.forEach{color->row.addView(android.view.View(context).apply{tag=StudioTheme.PRESERVE_COLOR;contentDescription=String.format("Recent color #%08X",color);isClickable=true;isFocusable=true;tooltipText=String.format("#%06X",color and 0xffffff);setBackgroundColor(color);setOnClickListener{choose(color)}},LayoutParams((44*d).toInt(),(44*d).toInt()))};addView(HorizontalScrollView(context).apply{isHorizontalScrollBarEnabled=false;addView(row)},LayoutParams(-1,(48*d).toInt()))}
+        else{
+            val row=LinearLayout(context)
+            values.forEach{color->row.addView(android.view.View(context).apply{
+                tag=StudioTheme.PRESERVE_COLOR;contentDescription=String.format("Recent color #%08X",color)
+                isClickable=true;isFocusable=true;tooltipText=String.format("#%06X",color and 0xffffff)
+                setBackgroundColor(color);setOnClickListener{choose(color)}
+            },LayoutParams((44*d).toInt(),(44*d).toInt()))}
+            addView(HorizontalScrollView(context).apply{
+                isHorizontalScrollBarEnabled=true;isScrollbarFadingEnabled=false
+                scrollBarStyle=android.view.View.SCROLLBARS_OUTSIDE_INSET
+                scrollBarSize=(3*d).toInt().coerceAtLeast(1)
+                contentDescription="Recent colours, swipe horizontally for more"
+                if(android.os.Build.VERSION.SDK_INT>=29){
+                    horizontalScrollbarThumbDrawable=GradientDrawable().apply{setColor(theme.secondary);cornerRadius=2*d}
+                    horizontalScrollbarTrackDrawable=GradientDrawable().apply{setColor(theme.track);cornerRadius=2*d}
+                }
+                addView(row)
+            },LayoutParams(-1,(48*d).toInt()))
+        }
     }
 }

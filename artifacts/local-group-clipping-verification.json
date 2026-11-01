@@ -1,0 +1,60 @@
+{
+  "apk": "inkstone-0.22-local-group-clipping-debug.apk",
+  "sha256": "71ea8caf24391318cb177264cc675b5699fa00b0b0e883681cd0c1a7e4ff0808",
+  "bytes": 15815266,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4428400,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1108808,
+          "alignment": 16384
+        },
+        {
+          "offset": 4289248,
+          "alignment": 16384
+        },
+        {
+          "offset": 4423120,
+          "alignment": 16384
+        }
+      ]
+    },
+    "x86_64": {
+      "bytes": 5028616,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1178576,
+          "alignment": 16384
+        },
+        {
+          "offset": 4879248,
+          "alignment": 16384
+        },
+        {
+          "offset": 5023288,
+          "alignment": 16384
+        }
+      ]
+    }
+  },
+  "static_checks_passed": true,
+  "tests": {
+    "cpu": 123,
+    "physicalMetal": 16,
+    "android": 149
+  },
+  "lintWarnings": 137,
+  "published": false,
+  "physicalAndroidTested": false
+}

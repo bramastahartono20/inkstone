@@ -4,7 +4,7 @@
     <uses-feature android:name="android.hardware.touchscreen.multitouch" android:required="false" />
     <application android:label="Inkstone" android:theme="@style/AppTheme"
         android:icon="@drawable/ic_launcher" android:allowBackup="false"
-        android:supportsRtl="true" android:hardwareAccelerated="true" android:enableOnBackInvokedCallback="false">
+        android:supportsRtl="true" android:hardwareAccelerated="true" android:largeHeap="true" android:enableOnBackInvokedCallback="false">
         <activity android:name=".MainActivity" android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:resizeableActivity="true">

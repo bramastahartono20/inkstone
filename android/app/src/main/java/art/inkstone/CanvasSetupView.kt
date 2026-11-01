@@ -108,7 +108,13 @@ internal class CanvasSetupView(private val activity:MainActivity,initialMode:Str
                 addKeypad(w,h,keypadHeight,side,narrow);update()
             }
             "Colour profile"->{val g=group();g.addView(label("RGB",22f,Color.WHITE),LinearLayout.LayoutParams(-1,dp(58)));g.addView(label("sRGB IEC61966-2.1    ✓",16f,Color.WHITE),LinearLayout.LayoutParams(-1,dp(58)));details.addView(label("This canvas uses 8-bit sRGB.",14f),LinearLayout.LayoutParams(-1,dp(52)))}
-            "Time-lapse settings"->{details.addView(label("Time-lapse recording is not available yet.",16f).apply{maxLines=3},LinearLayout.LayoutParams(-1,dp(120)))}
+            "Time-lapse settings"->{
+                details.addView(label("Record your artwork as periodic frames, then export an MP4 from Actions → Video.",16f).apply{maxLines=4},LinearLayout.LayoutParams(-1,dp(130)))
+                val row=LinearLayout(activity).apply{gravity=Gravity.CENTER_VERTICAL}
+                row.addView(label("Record new artworks",16f),LinearLayout.LayoutParams(0,dp(58),1f))
+                val prefs=activity.getSharedPreferences("timelapse",0)
+                row.addView(StudioSwitch(activity,"Record new artworks",prefs.getBoolean("defaultEnabled",true)){prefs.edit().putBoolean("defaultEnabled",it).apply()},LinearLayout.LayoutParams(dp(60),dp(48)));details.addView(row)
+            }
             "Canvas properties"->{
                 val g=group();g.addView(label("Background colour",18f),LinearLayout.LayoutParams(-1,dp(50)))
                 val swatches=LinearLayout(activity).apply{setPadding(dp(16),0,dp(16),dp(10))}

@@ -1,0 +1,6446 @@
+{
+  "workspace": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "zoom-0": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "zoom-1": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422.00003
+    ]
+  },
+  "zoom-2": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422.00006
+    ]
+  },
+  "zoom-3": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662.00006,
+      422
+    ]
+  },
+  "zoom-4": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      661.9998,
+      421.9999
+    ]
+  },
+  "zoom-5": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      421.99997
+    ]
+  },
+  "zoom-6": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      661.99994,
+      422
+    ]
+  },
+  "zoom-7": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662.00006,
+      421.99997
+    ]
+  },
+  "zoom-8": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      421.99994
+    ]
+  },
+  "zoom-9": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      661.99994,
+      421.9999
+    ]
+  },
+  "zoom-10": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      661.99994,
+      421.99997
+    ]
+  },
+  "zoom-11": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      661.9999,
+      421.99997
+    ]
+  },
+  "zoom-12": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      421.99997
+    ]
+  },
+  "brushes": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Add": [
+      1234,
+      81
+    ],
+    "Recent": [
+      898.5,
+      61
+    ],
+    "Sketching": [
+      898.5,
+      115
+    ],
+    "Inking": [
+      898.5,
+      169
+    ],
+    "Drawing": [
+      898.5,
+      223
+    ],
+    "Painting": [
+      898.5,
+      277
+    ],
+    "Artistic": [
+      898.5,
+      331
+    ],
+    "Calligraphy": [
+      898.5,
+      385
+    ],
+    "Airbrushing": [
+      898.5,
+      439
+    ],
+    "Textures": [
+      898.5,
+      493
+    ],
+    "Abstract": [
+      898.5,
+      547
+    ],
+    "Charcoals": [
+      898.5,
+      601
+    ],
+    "Elements": [
+      898.5,
+      655
+    ],
+    "Spraypaints": [
+      898.5,
+      709
+    ],
+    "Materials": [
+      898.5,
+      763
+    ],
+    "Vintage": [
+      898.5,
+      817
+    ],
+    "Luminance": [
+      898.5,
+      871
+    ],
+    "Industrial": [
+      898.5,
+      925
+    ],
+    "Organic": [
+      898.5,
+      979
+    ],
+    "Water": [
+      898.5,
+      1033
+    ],
+    "Imported": [
+      898.5,
+      1087
+    ],
+    "Studio Pen, Inking": [
+      1115,
+      154
+    ],
+    "Fade Brush, Inking": [
+      1115,
+      229
+    ],
+    "Technical Pen, Inking": [
+      1115,
+      304
+    ],
+    "Dry Ink, Inking": [
+      1115,
+      379
+    ],
+    "Chisel Marker, Inking": [
+      1115,
+      454
+    ],
+    "Fine Liner, Inking": [
+      1115,
+      529
+    ],
+    "region": [
+      818,
+      44,
+      1268,
+      782
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "colors": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      1093,
+      702
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Active color preview": [
+      1215,
+      81
+    ],
+    "Recent colours, swipe horizontally for more": [
+      1093,
+      174
+    ],
+    "Recent color #FF3B75B5": [
+      950,
+      172
+    ],
+    "Color picker. Outer ring selects hue; inner area selects saturation and brightness.": [
+      1093,
+      339
+    ],
+    "Palette": [
+      1093,
+      504
+    ],
+    "Palette · drop a color here to add it": [
+      1093,
+      579
+    ],
+    "Color #202020": [
+      965.5,
+      553.5
+    ],
+    "Color #FFFFFF": [
+      1016.5,
+      553.5
+    ],
+    "Color #CF4C4C": [
+      1067.5,
+      553.5
+    ],
+    "Color #DF8C53": [
+      1118.5,
+      553.5
+    ],
+    "Color #E4C778": [
+      1169.5,
+      553.5
+    ],
+    "Color #A6B78C": [
+      1220.5,
+      553.5
+    ],
+    "Color #518476": [
+      965.5,
+      604.5
+    ],
+    "Color #315E70": [
+      1016.5,
+      604.5
+    ],
+    "Color #8CA5B8": [
+      1067.5,
+      604.5
+    ],
+    "Color #766284": [
+      1118.5,
+      604.5
+    ],
+    "Color #B7869D": [
+      1169.5,
+      604.5
+    ],
+    "Color #E1C6BC": [
+      1220.5,
+      604.5
+    ],
+    "Add current color": [
+      1093,
+      654
+    ],
+    "ColorDrop": [
+      1093,
+      750
+    ],
+    "region": [
+      918,
+      44,
+      1268,
+      754
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "filled": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "mixing": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Mixing enabled": [
+      1215,
+      173
+    ],
+    "Mix strength": [
+      1093,
+      249
+    ],
+    "Color pickup": [
+      1093,
+      324
+    ],
+    "Wetness": [
+      1093,
+      399
+    ],
+    "Done": [
+      1093,
+      445
+    ],
+    "region": [
+      918,
+      44,
+      1268,
+      614
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "mixing-result": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "layers": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Create layer group": [
+      1184.5,
+      80.5
+    ],
+    "Add": [
+      1234,
+      81
+    ],
+    "Layer row Layer 1": [
+      1093,
+      151.5
+    ],
+    "Lock Layer 1": [
+      1077,
+      151.5
+    ],
+    "Duplicate Layer 1": [
+      1149,
+      151.5
+    ],
+    "Delete Layer 1": [
+      1221,
+      151.5
+    ],
+    "Blend options for Layer 1": [
+      1196,
+      151
+    ],
+    "Layer 1 visible": [
+      1230,
+      151
+    ],
+    "Opacity for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Darken for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Multiply for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Colour Burn for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Linear Burn for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Darker Colour for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Normal for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Lighten for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Screen for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Colour Dodge for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Add for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Overlay for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Hard Light for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Difference for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Exclusion for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Subtract for Layer 1": [
+      928,
+      110
+    ],
+    "Background colour": [
+      1093,
+      211
+    ],
+    "region": [
+      918,
+      44,
+      1268,
+      754
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "group-empty": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Create layer group": [
+      1184.5,
+      80.5
+    ],
+    "Add": [
+      1234,
+      81
+    ],
+    "Group row Color study": [
+      1093,
+      145
+    ],
+    "Collapse group Color study": [
+      945,
+      145
+    ],
+    "Toggle group Color study": [
+      1066,
+      145
+    ],
+    "Options for group Color study": [
+      1192,
+      145
+    ],
+    "Color study group visible": [
+      1236,
+      145
+    ],
+    "Layer row Layer 2": [
+      1093,
+      204.5
+    ],
+    "Lock Layer 2": [
+      1077,
+      204.5
+    ],
+    "Duplicate Layer 2": [
+      1149,
+      204.5
+    ],
+    "Delete Layer 2": [
+      1221,
+      204.5
+    ],
+    "Blend options for Layer 2": [
+      1196,
+      204
+    ],
+    "Layer 2 visible": [
+      1230,
+      204
+    ],
+    "Opacity for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Darken for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Multiply for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Colour Burn for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Linear Burn for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Darker Colour for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Normal for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Lighten for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Screen for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Colour Dodge for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Add for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Overlay for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Hard Light for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Difference for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Exclusion for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Subtract for Layer 2": [
+      928,
+      110
+    ],
+    "Layer row Layer 1": [
+      1093,
+      275.5
+    ],
+    "Lock Layer 1": [
+      1077,
+      275.5
+    ],
+    "Duplicate Layer 1": [
+      1149,
+      275.5
+    ],
+    "Delete Layer 1": [
+      1221,
+      275.5
+    ],
+    "Blend options for Layer 1": [
+      1196,
+      275
+    ],
+    "Layer 1 visible": [
+      1230,
+      275
+    ],
+    "Opacity for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Darken for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Multiply for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Colour Burn for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Linear Burn for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Darker Colour for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Normal for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Lighten for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Screen for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Colour Dodge for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Add for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Overlay for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Hard Light for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Difference for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Exclusion for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Subtract for Layer 1": [
+      928,
+      110
+    ],
+    "Background colour": [
+      1093,
+      335
+    ],
+    "region": [
+      918,
+      44,
+      1268,
+      754
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "groups": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Create layer group": [
+      1184.5,
+      80.5
+    ],
+    "Add": [
+      1234,
+      81
+    ],
+    "Group row Color study": [
+      1093,
+      145
+    ],
+    "Collapse group Color study": [
+      945,
+      145
+    ],
+    "Toggle group Color study": [
+      1066,
+      145
+    ],
+    "Options for group Color study": [
+      1192,
+      145
+    ],
+    "Color study group visible": [
+      1236,
+      145
+    ],
+    "Layer row Layer 2": [
+      1103,
+      204.5
+    ],
+    "Lock Layer 2": [
+      1077,
+      204.5
+    ],
+    "Duplicate Layer 2": [
+      1149,
+      204.5
+    ],
+    "Delete Layer 2": [
+      1221,
+      204.5
+    ],
+    "Blend options for Layer 2": [
+      1196,
+      204
+    ],
+    "Layer 2 visible": [
+      1230,
+      204
+    ],
+    "Opacity for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Darken for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Multiply for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Colour Burn for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Linear Burn for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Darker Colour for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Normal for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Lighten for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Screen for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Colour Dodge for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Add for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Overlay for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Hard Light for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Difference for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Exclusion for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Subtract for Layer 2": [
+      928,
+      110
+    ],
+    "Layer row Layer 1": [
+      1093,
+      275.5
+    ],
+    "Lock Layer 1": [
+      1077,
+      275.5
+    ],
+    "Duplicate Layer 1": [
+      1149,
+      275.5
+    ],
+    "Delete Layer 1": [
+      1221,
+      275.5
+    ],
+    "Blend options for Layer 1": [
+      1196,
+      275
+    ],
+    "Layer 1 visible": [
+      1230,
+      275
+    ],
+    "Opacity for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Darken for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Multiply for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Colour Burn for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Linear Burn for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Darker Colour for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Normal for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Lighten for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Screen for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Colour Dodge for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Add for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Overlay for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Hard Light for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Difference for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Exclusion for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Subtract for Layer 1": [
+      928,
+      110
+    ],
+    "Background colour": [
+      1093,
+      335
+    ],
+    "region": [
+      918,
+      44,
+      1268,
+      754
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "group-blend": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Create layer group": [
+      1184.5,
+      80.5
+    ],
+    "Add": [
+      1234,
+      81
+    ],
+    "Group row Color study": [
+      1093,
+      145
+    ],
+    "Collapse group Color study": [
+      945,
+      145
+    ],
+    "Toggle group Color study": [
+      1066,
+      145
+    ],
+    "Options for group Color study": [
+      1192,
+      145
+    ],
+    "Color study group visible": [
+      1236,
+      145
+    ],
+    "Layer row Layer 2": [
+      1103,
+      204.5
+    ],
+    "Lock Layer 2": [
+      1077,
+      204.5
+    ],
+    "Duplicate Layer 2": [
+      1149,
+      204.5
+    ],
+    "Delete Layer 2": [
+      1221,
+      204.5
+    ],
+    "Blend options for Layer 2": [
+      1196,
+      204
+    ],
+    "Layer 2 visible": [
+      1230,
+      204
+    ],
+    "Opacity for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Darken for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Multiply for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Colour Burn for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Linear Burn for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Darker Colour for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Normal for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Lighten for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Screen for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Colour Dodge for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Add for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Overlay for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Hard Light for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Difference for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Exclusion for Layer 2": [
+      928,
+      110
+    ],
+    "Blend Subtract for Layer 2": [
+      928,
+      110
+    ],
+    "Layer row Layer 1": [
+      1093,
+      275.5
+    ],
+    "Lock Layer 1": [
+      1077,
+      275.5
+    ],
+    "Duplicate Layer 1": [
+      1149,
+      275.5
+    ],
+    "Delete Layer 1": [
+      1221,
+      275.5
+    ],
+    "Blend options for Layer 1": [
+      1196,
+      275
+    ],
+    "Layer 1 visible": [
+      1230,
+      275
+    ],
+    "Opacity for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Darken for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Multiply for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Colour Burn for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Linear Burn for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Darker Colour for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Normal for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Lighten for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Screen for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Colour Dodge for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Add for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Overlay for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Hard Light for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Difference for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Exclusion for Layer 1": [
+      928,
+      110
+    ],
+    "Blend Subtract for Layer 1": [
+      928,
+      110
+    ],
+    "Background colour": [
+      1093,
+      335
+    ],
+    "region": [
+      8,
+      44,
+      268,
+      586
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "shape": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "transform": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Mode": [
+      513,
+      758
+    ],
+    "Adjust": [
+      599,
+      758
+    ],
+    "Options": [
+      685,
+      758
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "share": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Add": [
+      111,
+      136
+    ],
+    "Canvas": [
+      170,
+      136
+    ],
+    "Share": [
+      229,
+      136
+    ],
+    "Video": [
+      288,
+      136
+    ],
+    "Prefs": [
+      347,
+      136
+    ],
+    "Help": [
+      406,
+      136
+    ],
+    "Inkstone": [
+      259,
+      253
+    ],
+    "PNG": [
+      259,
+      301
+    ],
+    "JPEG": [
+      259,
+      349
+    ],
+    "PSD": [
+      259,
+      397
+    ],
+    "region": [
+      64,
+      44,
+      454,
+      782
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "video-off": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Add": [
+      111,
+      136
+    ],
+    "Canvas": [
+      170,
+      136
+    ],
+    "Share": [
+      229,
+      136
+    ],
+    "Video": [
+      288,
+      136
+    ],
+    "Prefs": [
+      347,
+      136
+    ],
+    "Help": [
+      406,
+      136
+    ],
+    "Time-lapse status": [
+      259,
+      210
+    ],
+    "Time-lapse recording": [
+      414,
+      310
+    ],
+    "Time-lapse length 30 sec": [
+      135.5,
+      404
+    ],
+    "Time-lapse length 1 min": [
+      258.5,
+      404
+    ],
+    "Time-lapse length 2 min": [
+      382,
+      404
+    ],
+    "Export time-lapse": [
+      259,
+      456.5
+    ],
+    "Clear time-lapse": [
+      259,
+      497.5
+    ],
+    "Confirm clear time-lapse": [
+      74,
+      110
+    ],
+    "region": [
+      64,
+      44,
+      454,
+      782
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "video": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Add": [
+      111,
+      136
+    ],
+    "Canvas": [
+      170,
+      136
+    ],
+    "Share": [
+      229,
+      136
+    ],
+    "Video": [
+      288,
+      136
+    ],
+    "Prefs": [
+      347,
+      136
+    ],
+    "Help": [
+      406,
+      136
+    ],
+    "Time-lapse status": [
+      259,
+      210
+    ],
+    "Time-lapse recording": [
+      414,
+      310
+    ],
+    "Time-lapse length 30 sec": [
+      135.5,
+      404
+    ],
+    "Time-lapse length 1 min": [
+      258.5,
+      404
+    ],
+    "Time-lapse length 2 min": [
+      382,
+      404
+    ],
+    "Export time-lapse": [
+      259,
+      456.5
+    ],
+    "Clear time-lapse": [
+      259,
+      497.5
+    ],
+    "Confirm clear time-lapse": [
+      74,
+      110
+    ],
+    "region": [
+      64,
+      44,
+      454,
+      782
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "video-minute": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Add": [
+      111,
+      136
+    ],
+    "Canvas": [
+      170,
+      136
+    ],
+    "Share": [
+      229,
+      136
+    ],
+    "Video": [
+      288,
+      136
+    ],
+    "Prefs": [
+      347,
+      136
+    ],
+    "Help": [
+      406,
+      136
+    ],
+    "Time-lapse status": [
+      259,
+      210
+    ],
+    "Time-lapse recording": [
+      414,
+      310
+    ],
+    "Time-lapse length 30 sec": [
+      135.5,
+      404
+    ],
+    "Time-lapse length 1 min": [
+      258.5,
+      404
+    ],
+    "Time-lapse length 2 min": [
+      382,
+      404
+    ],
+    "Export time-lapse": [
+      259,
+      456.5
+    ],
+    "Clear time-lapse": [
+      259,
+      497.5
+    ],
+    "Confirm clear time-lapse": [
+      74,
+      110
+    ],
+    "region": [
+      64,
+      44,
+      454,
+      782
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "export": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "region": [
+      8,
+      44,
+      398,
+      175
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas-zoom-0": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas-zoom-1": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      661.99994,
+      422
+    ]
+  },
+  "atlas-zoom-2": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      661.9999,
+      421.99997
+    ]
+  },
+  "atlas-zoom-3": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas-zoom-4": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas-zoom-5": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas-zoom-6": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      421.99997
+    ]
+  },
+  "atlas-zoom-7": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas-zoom-8": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas-zoom-9": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas-zoom-10": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas-zoom-11": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas-zoom-12": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas-pan-0": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      662,
+      422
+    ]
+  },
+  "atlas-pan-1": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      640,
+      422
+    ]
+  },
+  "atlas-pan-2": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      618,
+      422
+    ]
+  },
+  "atlas-pan-3": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      596,
+      422
+    ]
+  },
+  "atlas-pan-4": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      574,
+      422
+    ]
+  },
+  "atlas-pan-5": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      552,
+      422
+    ]
+  },
+  "atlas-pan-6": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      530,
+      422
+    ]
+  },
+  "atlas-pan-7": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      508,
+      422
+    ]
+  },
+  "atlas-pan-8": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      486,
+      422
+    ]
+  },
+  "atlas-pan-9": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      464,
+      422
+    ]
+  },
+  "atlas-pan-10": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      442,
+      422
+    ]
+  },
+  "atlas-pan-11": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      420,
+      422
+    ]
+  },
+  "atlas-pan-12": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      398,
+      422
+    ]
+  },
+  "atlas-active": {
+    "Drawing canvas. Two fingers pan, pinch and rotate. Two-finger tap undo; three-finger tap redo.": [
+      662,
+      422
+    ],
+    "Docked brush controls": [
+      22,
+      422
+    ],
+    "Brush size": [
+      22,
+      227
+    ],
+    "Eyedropper": [
+      22,
+      422
+    ],
+    "Brush opacity": [
+      22,
+      617
+    ],
+    "Brush preview. Tap to remember this slider position.": [
+      80,
+      80
+    ],
+    "Gallery": [
+      42,
+      22
+    ],
+    "Actions": [
+      104,
+      22
+    ],
+    "Adjustments": [
+      144,
+      22
+    ],
+    "Select": [
+      184,
+      22
+    ],
+    "Transform": [
+      224,
+      22
+    ],
+    "Paint": [
+      1016,
+      22
+    ],
+    "Paint Mixing": [
+      1064,
+      22
+    ],
+    "Smudge": [
+      1112,
+      22
+    ],
+    "Erase": [
+      1160,
+      22
+    ],
+    "Layers": [
+      1208,
+      22
+    ],
+    "Color": [
+      1256,
+      22
+    ],
+    "History and save": [
+      640,
+      22
+    ],
+    "Undo": [
+      618,
+      22
+    ],
+    "Redo": [
+      662,
+      22
+    ],
+    "Save artwork": [
+      711,
+      22
+    ],
+    "Canvas center": [
+      398,
+      422
+    ]
+  }
+}

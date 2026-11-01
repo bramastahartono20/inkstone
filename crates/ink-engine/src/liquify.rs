@@ -1,11 +1,11 @@
 use super::*;
 
-pub(super) struct Liquify {layer:usize,before:Arc<Vec<u32>>,last:Option<(f32,f32)>}
+pub(super) struct Liquify {layer:usize,before:crate::tiles::Tiles,last:Option<(f32,f32)>}
 impl Engine {
     pub(super) fn finish_liquify(&mut self,cancel:bool){
         if let Some(edit)=self.liquify.take(){
             if cancel{self.state.layers[edit.layer].pixels=edit.before;self.dirty=true;}
-            else{self.action_name="Liquify".into();self.pixel_change(edit.layer,edit.before.as_ref().clone());}
+            else{self.action_name="Liquify".into();self.pixel_change(edit.layer,edit.before.clone());}
         }
     }
     pub(super) fn liquify_command(&mut self,v:&Value)->Result<(),String>{
@@ -51,7 +51,7 @@ impl Engine {
         let sx0=bound(cx-radius-margin,self.width);let sy0=bound(cy-radius-margin,self.height);
         let sx1=bound(cx+radius+margin+2.,self.width);let sy1=bound(cy+radius+margin+2.,self.height);
         let sw=sx1-sx0;let mut source=Vec::with_capacity(sw*(sy1-sy0));
-        for y in sy0..sy1{source.extend_from_slice(&self.state.layers[edit.layer].pixels[y*self.width+sx0..y*self.width+sx1]);}
+        for y in sy0..sy1{source.extend(self.state.layers[edit.layer].pixels.row(y,sx0,sx1));}
         let sample=|x:f32,y:f32|{
             let x=x-0.5;let y=y-0.5;let ix=x.floor() as isize;let iy=y.floor() as isize;let fx=x-x.floor();let fy=y-y.floor();let mut rgba=[0.;4];
             for(xx,yy,weight)in[(ix,iy,(1.-fx)*(1.-fy)),(ix+1,iy,fx*(1.-fy)),(ix,iy+1,(1.-fx)*fy),(ix+1,iy+1,fx*fy)]{
@@ -60,7 +60,7 @@ impl Engine {
             };if rgba[3]>1e-6{pack(rgba[0]/rgba[3],rgba[1]/rgba[3],rgba[2]/rgba[3],rgba[3])}else{0}
         };
         let lock=self.state.layers[edit.layer].alpha_lock;
-        let pixels=Arc::make_mut(&mut self.state.layers[edit.layer].pixels);
+        let pixels=&mut self.state.layers[edit.layer].pixels;
         for y in top..bottom{for x in left..right{
             let vx=x as f32+0.5-cx;let vy=y as f32+0.5-cy;let distance=vx.hypot(vy);if distance>=radius{continue;}
             let i=y*self.width+x;if self.selection.as_ref().is_some_and(|s|!s[i]){continue;}

@@ -1,0 +1,57 @@
+{
+  "apk": "inkstone-0.22-local-layer-indicators-debug.apk",
+  "sha256": "277db27019de07b51c871a5c18391a8bc6bc63cb765c9c6c57cb12ed71034ad1",
+  "bytes": 15815266,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4428400,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1108808,
+          "alignment": 16384
+        },
+        {
+          "offset": 4289248,
+          "alignment": 16384
+        },
+        {
+          "offset": 4423120,
+          "alignment": 16384
+        }
+      ]
+    },
+    "x86_64": {
+      "bytes": 5028616,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1178576,
+          "alignment": 16384
+        },
+        {
+          "offset": 4879248,
+          "alignment": 16384
+        },
+        {
+          "offset": 5023288,
+          "alignment": 16384
+        }
+      ]
+    }
+  },
+  "static_checks_passed": true,
+  "androidTests": 8,
+  "nativeRecoveryRegressionPassed": true,
+  "drawingFreezeResolved": false,
+  "deviceTested": false,
+  "published": false
+}

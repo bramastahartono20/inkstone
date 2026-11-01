@@ -1,0 +1,29 @@
+{
+  "decoder": "FFmpeg 7.1",
+  "decode_succeeded": true,
+  "frames": 21,
+  "dimensions": [
+    64,
+    48
+  ],
+  "fps": 12,
+  "sampled_frame_mean_rgb": [
+    [
+      255.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      252.0
+    ],
+    [
+      0.0,
+      255.0,
+      0.0
+    ]
+  ],
+  "software_fallback_tested": true,
+  "android_hardware_encoder_device_tested": false
+}

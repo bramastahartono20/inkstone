@@ -1,0 +1,71 @@
+{
+  "apk": "inkstone-0.22-local-tutorial-brush-timelapse-debug.apk",
+  "sha256": "6620f4e3d9033c91a19fdceb5f9a8a81f59899674929a54ad8bb14b6e1b2d95b",
+  "bytes": 16861331,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4437008,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1111880,
+          "alignment": 16384
+        },
+        {
+          "offset": 4297760,
+          "alignment": 16384
+        },
+        {
+          "offset": 4431728,
+          "alignment": 16384
+        }
+      ]
+    },
+    "x86_64": {
+      "bytes": 5040056,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1182176,
+          "alignment": 16384
+        },
+        {
+          "offset": 4890592,
+          "alignment": 16384
+        },
+        {
+          "offset": 5034728,
+          "alignment": 16384
+        }
+      ]
+    }
+  },
+  "static_checks_passed": true,
+  "validation": {
+    "android_host_tests": 157,
+    "rust_cpu_tests": 127,
+    "gpu_brush_smudge_history": "passed with final textures",
+    "lint": "passed",
+    "assemble": "passed",
+    "native_bytes_match": true,
+    "tutorial_assets_dark_and_light": true,
+    "new_native_brush_assets": 13,
+    "export_seconds_verified": [
+      30,
+      60,
+      120
+    ],
+    "export_ffmpeg_decode": "30s, H264, 24 fps, 720 frames",
+    "physical_device_tested": false,
+    "published": false,
+    "signer_sha256": "23bd46ca626fc975136cf1b2b2772a3d56df2e3a7ddd28899a660880f498e5d3"
+  }
+}

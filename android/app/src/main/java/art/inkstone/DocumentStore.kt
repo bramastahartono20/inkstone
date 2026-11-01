@@ -30,7 +30,7 @@ class DocumentStore(context: Context) {
         }.getOrNull()
     }?.sortedByDescending { it.modified } ?: emptyList()
     @Synchronized fun save(id: String, name: String, bytes: ByteArray, image: Bitmap, documentWidth:Int=image.width, documentHeight:Int=image.height,mode:String="raster") {
-        atomic(file(id, "inkstone")) { output -> GZIPOutputStream(output).use { it.write(bytes) } }
+        atomic(file(id, "inkstone")) { output -> encode(output, bytes) }
         val scale=minOf(1f,480f/maxOf(image.width,image.height))
         val thumbnail=if(scale<1f)Bitmap.createScaledBitmap(image,(image.width*scale).toInt().coerceAtLeast(1),(image.height*scale).toInt().coerceAtLeast(1),true) else image
         try { atomic(file(id, "png")) { check(thumbnail.compress(Bitmap.CompressFormat.PNG, 100, it)) } }
@@ -89,7 +89,28 @@ class DocumentStore(context: Context) {
         for(id in ids){val f=file(id,"json");val data=JSONObject(f.readText()).put("tags",JSONArray(clean));atomic(f){it.write(data.toString().toByteArray())}}
     }
     companion object {
-        fun decode(input: InputStream): ByteArray = GZIPInputStream(input).use { gzip ->
+        private val BINARY = "INKBIN1\n".toByteArray(Charsets.US_ASCII)
+        fun isBinary(bytes: ByteArray) = bytes.size >= BINARY.size && (BINARY.indices).all { bytes[it] == BINARY[it] }
+        /** Binary documents are already tile-compressed; only legacy/vector JSON is gzipped. */
+        fun encode(output: java.io.OutputStream, bytes: ByteArray) {
+            if (isBinary(bytes)) output.write(bytes) else GZIPOutputStream(output).use { it.write(bytes) }
+        }
+        /** Layer/document metadata as JSON for any stored format. */
+        fun header(bytes: ByteArray): JSONObject {
+            if (isBinary(bytes)) {
+                val at = BINARY.size; val n = java.nio.ByteBuffer.wrap(bytes, at, 4).order(java.nio.ByteOrder.LITTLE_ENDIAN).int
+                return JSONObject(String(bytes, at + 4, n, Charsets.UTF_8))
+            }
+            val plain = if (bytes.size > 2 && bytes[0] == 0x1f.toByte() && bytes[1] == 0x8b.toByte()) GZIPInputStream(bytes.inputStream()).use { it.readBytes() } else bytes
+            return if (plain.size > 2 && plain[0] == 0x1f.toByte() && plain[1] == 0x8b.toByte()) header(plain) else JSONObject(String(plain))
+        }
+        fun decode(input: InputStream): ByteArray {
+            val buffered = if (input.markSupported()) input else java.io.BufferedInputStream(input)
+            buffered.mark(2); val b0 = buffered.read(); val b1 = buffered.read(); buffered.reset()
+            if (b0 != 0x1f || b1 != 0x8b) return readLimited(buffered)
+            return readLimited(GZIPInputStream(buffered))
+        }
+        private fun readLimited(source: InputStream): ByteArray = source.use { gzip ->
             val out = java.io.ByteArrayOutputStream()
             val chunk = ByteArray(32768); var total = 0
             while (true) {

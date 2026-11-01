@@ -8,8 +8,8 @@ android {
         applicationId 'art.inkstone'
         minSdk 26
         targetSdk 36
-        versionCode 35
-        versionName '0.22'
+        versionCode 36
+        versionName '0.23'
         ndk { abiFilters 'arm64-v8a', 'x86_64' }
     }
     compileOptions {
@@ -25,6 +25,9 @@ android {
     testOptions {
         unitTests.includeAndroidResources = true
         unitTests.all {
+            inputs.files(fileTree('../../target/release') {
+                include 'libinkstone.dylib', 'libinkstone.so', 'inkstone.dll'
+            }).withPropertyName('hostNativeEngine')
             systemProperty 'java.library.path', file('../../target/release').absolutePath
             systemProperty 'robolectric.dependency.repo.url', 'https://repo.maven.apache.org/maven2'
             systemProperty 'inkstone.artifacts', file('../../artifacts').absolutePath
@@ -38,6 +41,7 @@ android {
 }
 
 dependencies {
+    implementation files('libs/jcodec-0.2.5.jar')
     testImplementation 'junit:junit:4.13.2'
     testImplementation('org.robolectric:robolectric:4.17') {
         if (System.getenv('INKSTONE_TEST_RUNTIME')) {

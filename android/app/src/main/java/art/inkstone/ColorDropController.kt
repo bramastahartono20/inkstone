@@ -23,7 +23,7 @@ internal class ColorDropController(
         private val p=Paint(Paint.ANTI_ALIAS_FLAG)
         override fun onDraw(c:Canvas){
             if(!dragging)return
-            val cursorX=this@ColorDropController.x;val cursorY=this@ColorDropController.y
+            val cursorX=if(filling)anchorX else this@ColorDropController.x;val cursorY=if(filling)anchorY else this@ColorDropController.y
             if(filling){
                 val left=width*.24f;val right=width*.76f;val top=canvas.top+12*d
                 p.style=Paint.Style.FILL;p.color=0xee171717.toInt();c.drawRoundRect(left-14*d,top,right+14*d,top+57*d,12*d,12*d,p)

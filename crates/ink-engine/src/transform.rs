@@ -2,7 +2,7 @@ use super::*;
 
 impl Engine {
     pub(super) fn transform_bounds(&self, moving: bool, layer: usize) -> [usize; 4] {
-        if Arc::ptr_eq(&self.state.layers[layer].pixels,&self.empty_pixels){return [0;4];}
+        if (self.state.layers[layer].pixels).is_blank(){return [0;4];}
         let mut r = [self.width, self.height, 0, 0];
         for y in 0..self.height {
             for x in 0..self.width {
@@ -95,7 +95,7 @@ impl Engine {
         if target.iter().any(|v|!v.is_finite()) || target[0]< -2048. || target[1]< -2048. || target[2]>self.width as f32+2048. || target[3]>self.height as f32+2048.{return Err("Transform exceeds off-canvas storage bounds".into());}
         let original_state=self.state.clone();let mask_before=self.state.layers[self.state.active].mask.clone();
         if mask_before.is_some() && self.selection.is_some(){return Err("Apply the layer mask before transforming a selection".into());}
-        let before_layer=self.state.layers[self.state.active].clone();let before=before_layer.pixels.clone();let mut exterior_out=if self.selection.is_none(){Default::default()}else{before_layer.exterior.clone()};let mut out=before.as_ref().clone();let mut mask_out=mask_before.as_ref().map(|_|vec![255u8;self.width*self.height]);
+        let before_layer=self.state.layers[self.state.active].clone();let before=before_layer.pixels.clone();let mut exterior_out=if self.selection.is_none(){Default::default()}else{before_layer.exterior.clone()};let mut out=before.to_vec();let mut mask_out=mask_before.as_ref().map(|_|vec![255u8;self.width*self.height]);
         for(i,p)in out.iter_mut().enumerate(){let remaining=255-self.selection_coverage(i) as u32;*p=if remaining==0{0}else{(*p&0xffffff)|(((((*p>>24)*remaining)+127)/255)<<24)};}
         let x0=(target[0].floor()-1.).clamp(-2048.,self.width as f32+2048.) as i32;let y0=(target[1].floor()-1.).clamp(-2048.,self.height as f32+2048.) as i32;let x1=(target[2].ceil()+1.).clamp(-2048.,self.width as f32+2048.) as i32;let y1=(target[3].ceil()+1.).clamp(-2048.,self.height as f32+2048.) as i32;
         for y in y0..y1{for x in x0..x1{let Some((sx,sy))=map(x as f32+0.5,y as f32+0.5)else{continue};if !sx.is_finite() || !sy.is_finite(){continue;}
@@ -112,8 +112,8 @@ impl Engine {
         let other_tiles=self.state.layers.iter().enumerate().filter(|(i,_)|*i!=self.state.active).map(|(_,l)|l.exterior.len()).sum::<usize>();
         if other_tiles+exterior_out.len()>1024{return Err("Transform exceeds off-canvas storage capacity".into());}
         let exterior_changed=!before_layer.exterior.is_empty() || !exterior_out.is_empty();
-        self.state.layers[self.state.active].pixels=Arc::new(out);self.state.layers[self.state.active].exterior=exterior_out;self.set_selection(None);self.exterior_dirty=true;
+        self.state.layers[self.state.active].pixels=crate::tiles::Tiles::from_flat(&out,self.width,self.height);self.state.layers[self.state.active].exterior=exterior_out;self.set_selection(None);self.exterior_dirty=true;
         if let Some(mask)=mask_out{self.state.layers[self.state.active].mask=Some(Arc::new(mask));}
-        if mask_before.is_some() || exterior_changed{self.record(Change::Structure{before:original_state,after:self.state.clone()});}else{self.pixel_change(self.state.active,before.as_ref().clone());}Ok(())
+        if mask_before.is_some() || exterior_changed{self.record(Change::Structure{before:original_state,after:self.state.clone()});}else{self.pixel_change(self.state.active,before.to_vec());}Ok(())
     }
 }

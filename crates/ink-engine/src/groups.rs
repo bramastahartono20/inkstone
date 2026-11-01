@@ -4,6 +4,72 @@ use super::*;
 pub(super) struct LayerGroup {pub(super) id:u32,#[serde(default)] pub(super) parent_id:Option<u32>,#[serde(default)] pub(super) anchor_id:Option<u32>,pub(super) name:String,pub(super) visible:bool,pub(super) locked:bool,collapsed:bool,#[serde(default="group_opacity")] pub(super) opacity:f32,#[serde(default="group_blend")] pub(super) blend:String}
 fn group_opacity()->f32{1.0}
 fn group_blend()->String{"Pass Through".into()}
+
+fn path_ids(groups:&[LayerGroup],mut id:Option<u32>)->Vec<u32>{
+    let mut path=Vec::new();
+    for _ in 0..32{let Some(g)=id.and_then(|id|groups.iter().find(|g|g.id==id))else{break;};path.push(g.id);id=g.parent_id;}
+    path.reverse();path
+}
+// Only a sibling immediately above a group clips to that group's combined alpha.
+pub(super) fn clipping_groups(groups:&[LayerGroup],layers:&[Layer])->std::collections::HashSet<u32>{
+    let mut targets=std::collections::HashSet::new();if groups.is_empty(){return targets;}
+    for pair in layers.windows(2){if !pair[1].clipping{continue;}
+        let lower=path_ids(groups,pair[0].group_id);let upper=path_ids(groups,pair[1].group_id);
+        if lower.starts_with(&upper) && lower.len()>upper.len(){targets.insert(lower[upper.len()]);}
+    }targets
+}
+enum CompositeStep<'a>{Layer(&'a Layer),Enter,Exit(&'a LayerGroup,bool)}
+pub(super) struct PreparedComposite<'a>{layers:&'a [Layer],steps:Vec<CompositeStep<'a>>}
+impl<'a> PreparedComposite<'a>{
+    pub(super) fn new(groups:&'a [LayerGroup],layers:&'a [Layer])->Self{
+        Self::except(groups,layers,None)
+    }
+    pub(super) fn except(groups:&'a [LayerGroup],layers:&'a [Layer],exclude:Option<u32>)->Self{
+        let targets=clipping_groups(groups,layers);
+        let isolated=|g:&LayerGroup|Some(g.id)!=exclude && (g.blend!="Pass Through" || g.opacity<1.0 || targets.contains(&g.id));
+        if !groups.iter().any(isolated){return Self{layers,steps:Vec::new()};}
+        let mut steps=Vec::new();let mut stack:Vec<&LayerGroup>=Vec::new();
+        for layer in layers{
+            let mut path=Vec::new();let mut next=layer.group_id;
+            for _ in 0..32{
+                let Some(g)=next.and_then(|id|groups.iter().find(|g|g.id==id))else{break;};
+                next=g.parent_id;if isolated(g){path.push(g);}
+            }
+            path.reverse();let mut common=0;
+            while common<stack.len() && common<path.len() && stack[common].id==path[common].id{common+=1;}
+            while stack.len()>common{let g=stack.pop().unwrap();steps.push(CompositeStep::Exit(g,targets.contains(&g.id)));}
+            for g in path.into_iter().skip(common){stack.push(g);steps.push(CompositeStep::Enter);}
+            steps.push(CompositeStep::Layer(layer));
+        }
+        while let Some(g)=stack.pop(){steps.push(CompositeStep::Exit(g,targets.contains(&g.id)));}
+        Self{layers,steps}
+    }
+    pub(super) fn color(&self,mut c:u32,sample:impl Fn(&Layer)->(u32,f32))->u32{
+        let mut base=0.0;
+        if self.steps.is_empty(){
+            for l in self.layers{
+                let(ink,coverage)=sample(l);
+                if let Some((kind,amount))=&l.adjustment{if l.is_visible(){let r=channel(c,16);let g=channel(c,8);let b=channel(c,0);let a=channel(c,24);let gray=r*0.2126+g*0.7152+b*0.0722;let adjusted=match kind.as_str(){"Invert"=>pack(1.0-r,1.0-g,1.0-b,a),"Grayscale"=>pack(gray,gray,gray,a),"Saturation"=>pack(gray+(r-gray)*(1.0+amount),gray+(g-gray)*(1.0+amount),gray+(b-gray)*(1.0+amount),a),_=>pack(r+amount,g+amount,b+amount,a)};c=mix_rgba(c,adjusted,l.opacity*coverage*if l.clipping{base}else{1.0}*if matches!(kind.as_str(),"Invert"|"Grayscale"){amount.abs()}else{1.0});}continue;}
+
+                if !l.clipping{base=if l.is_visible(){channel(ink,24)*coverage}else{0.0};}
+                if l.is_visible(){c=composite(c,ink,l.opacity*coverage*if l.clipping{base}else{1.0},&l.blend);}
+            }
+            return c;
+        }
+        let mut backs=[0u32;32];let mut bases=[0.0;32];let mut depth=0;
+        for step in &self.steps{match step{
+            CompositeStep::Enter=>{backs[depth]=c;bases[depth]=base;depth+=1;c=0;base=0.0;},
+            CompositeStep::Exit(g,clipped)=>{depth-=1;let alpha=channel(c,24)*g.opacity;c=composite(backs[depth],c,g.opacity,if g.blend=="Pass Through"{"Normal"}else{&g.blend});base=if *clipped{alpha}else{bases[depth]};},
+            CompositeStep::Layer(l)=>{
+                let(ink,coverage)=sample(l);
+                if let Some((kind,amount))=&l.adjustment{if l.is_visible(){let r=channel(c,16);let g=channel(c,8);let b=channel(c,0);let a=channel(c,24);let gray=r*0.2126+g*0.7152+b*0.0722;let adjusted=match kind.as_str(){"Invert"=>pack(1.0-r,1.0-g,1.0-b,a),"Grayscale"=>pack(gray,gray,gray,a),"Saturation"=>pack(gray+(r-gray)*(1.0+amount),gray+(g-gray)*(1.0+amount),gray+(b-gray)*(1.0+amount),a),_=>pack(r+amount,g+amount,b+amount,a)};c=mix_rgba(c,adjusted,l.opacity*coverage*if l.clipping{base}else{1.0}*if matches!(kind.as_str(),"Invert"|"Grayscale"){amount.abs()}else{1.0});}continue;}
+
+                if !l.clipping{base=if l.is_visible(){channel(ink,24)*coverage}else{0.0};}
+                if l.is_visible(){c=composite(c,ink,l.opacity*coverage*if l.clipping{base}else{1.0},&l.blend);}
+            }
+        }}c
+    }
+}
 impl Layer {
     pub fn is_visible(&self)->bool{self.visible && self.group_visible}
     pub fn is_locked(&self)->bool{self.locked || self.group_locked}
@@ -43,26 +109,8 @@ impl Engine {
     pub(super) fn composite_grouped<F:Fn(&Layer)->(u32,f32)>(&self,layers:&[Layer],c:u32,sample:F)->u32{
         self.composite_grouped_except(layers,c,None,sample)
     }
-    pub(super) fn composite_grouped_except<F:Fn(&Layer)->(u32,f32)>(&self,layers:&[Layer],mut c:u32,exclude:Option<u32>,sample:F)->u32{
-        let mut stack:[Option<&LayerGroup>;32]=[None;32];let mut backs=[0u32;32];let mut bases=[0.0;32];let mut depth=0;let mut base=0.0;
-        let isolated=self.state.groups.iter().any(|g|g.blend!="Pass Through"||g.opacity<1.0);
-        for l in layers{
-            if isolated{
-                let mut path:[Option<&LayerGroup>;32]=[None;32];let mut count=0;let mut next=l.group_id;
-                while let Some(g)=next.and_then(|id|self.state.groups.iter().find(|g|g.id==id)){
-                    if count==32{break;}next=g.parent_id;
-                    if Some(g.id)!=exclude && (g.blend!="Pass Through"||g.opacity<1.0){path[count]=Some(g);count+=1;}
-                }
-                path[..count].reverse();let mut common=0;
-                while common<depth && common<count && stack[common].unwrap().id==path[common].unwrap().id{common+=1;}
-                while depth>common{depth-=1;let g=stack[depth].unwrap();c=composite(backs[depth],c,g.opacity,if g.blend=="Pass Through"{"Normal"}else{&g.blend});base=bases[depth];}
-                for g in path.iter().take(count).skip(common){stack[depth]=*g;backs[depth]=c;bases[depth]=base;depth+=1;c=0;base=0.0;}
-            }
-            let(ink,coverage)=sample(l);
-            if !l.clipping{base=if l.is_visible(){channel(ink,24)*coverage}else{0.0};}
-            if l.is_visible(){c=composite(c,ink,l.opacity*coverage*if l.clipping{base}else{1.0},&l.blend);}
-        }
-        while depth>0{depth-=1;let g=stack[depth].unwrap();c=composite(backs[depth],c,g.opacity,if g.blend=="Pass Through"{"Normal"}else{&g.blend});}c
+    pub(super) fn composite_grouped_except<F:Fn(&Layer)->(u32,f32)>(&self,layers:&[Layer],c:u32,exclude:Option<u32>,sample:F)->u32{
+        PreparedComposite::except(&self.state.groups,layers,exclude).color(c,sample)
     }
     pub(super) fn move_layer(&mut self,v:&Value)->Result<(),String>{
         let id=v["id"].as_u64().ok_or("Missing layer")? as u32;
@@ -120,7 +168,7 @@ impl Engine {
             let members:Vec<_>=self.state.layers.iter().enumerate().filter(|(_,l)|self.in_group(l.group_id,id.unwrap()) && !l.is_locked()).collect();
             let extra:usize=members.iter().map(|(_,l)|self.width*self.height*4+l.exterior.len()*128*128*4).sum();
             if Self::layer_bytes(&self.state.layers)+extra>PIXEL_BUDGET*4{return Err("Not enough canvas memory to move this group".into());}
-            let translated=members.into_iter().map(|(i,l)|Ok((i,l.remapped(self.width,self.height,&self.empty_pixels,|x,y|(x+dx,y+dy))?))).collect::<Result<Vec<_>,String>>()?;
+            let translated=members.into_iter().map(|(i,l)|Ok((i,l.remapped(self.width,self.height,|x,y|(x+dx,y+dy))?))).collect::<Result<Vec<_>,String>>()?;
             let tiles=self.state.layers.iter().enumerate().map(|(i,l)|translated.iter().find(|(at,_)|*at==i).map_or(l.exterior.len(),|(_,l)|l.exterior.len())).sum::<usize>();
             if tiles>1024{return Err("Movement exceeds off-canvas storage capacity".into());}translated
         }else{Vec::new()};

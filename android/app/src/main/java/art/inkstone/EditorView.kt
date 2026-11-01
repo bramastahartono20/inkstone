@@ -101,7 +101,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         canvas.quickShapeEdit.changed={updateBottom();activity.scheduleSave()}
         canvas.onInputDevice=::inspectDevice
         session.onToolChange={if(session.tool!="Liquify")canvas.liquify.finish();if(session.tool!="Guide")canvas.guides.editing=false;canvas.finishQuickShape();canvas.syncTransformTool()}
-        session.beforeSnapshot={canvas.liquify.finish();canvas.finishQuickShape();canvas.rasterTransform.finish()}
+        session.beforeSnapshot={if(panelKey=="Adjustment")session.command("adjustCommit");canvas.liquify.finish();canvas.finishQuickShape();canvas.rasterTransform.finish()}
         session.beforeCommand={op->if(!op.startsWith("liquify") && op !in listOf("info","pick","selectionPreview") && canvas.liquify.active){canvas.liquify.finish();session.tool="Paint"};if(op !in listOf("info","pick","selectionPreview")){canvas.finishQuickShape();if(op !in listOf("transformMatrix","transformProjective","transformMesh"))canvas.rasterTransform.finish()}}
         session.onColorUsed={RecentColors(activity).record(it)}
         session.onFrame={canvas.onRenderedFrame()}
@@ -157,7 +157,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
             val control=icon(symbol){
                 when(symbol){
                     "Actions"->actions()
-                    "Adjustments"->adjustments()
+                    "Adjustments"->{adjustAsLayer=false;adjustments()}
                     "Select","Transform"->{dismissPanel();session.tool=if(session.tool==symbol)"Paint" else symbol;refreshTools();canvas.invalidate()}
                 }
             };icons[symbol]=control;left.addView(control)
@@ -284,7 +284,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         if(!session.info.optBoolean("maskEditing")){colorBeforeMask?.let{session.color=it};colorBeforeMask=null}
         canvas.syncTransformTool()
         colorHeader?.setBackgroundColor(session.color)
-        for((symbol,view)in icons){view.activeTool=when(symbol){"Paint"->session.tool=="Paint" && !session.paintMixingEnabled;"Paint Mixing"->session.tool=="Paint" && session.paintMixingEnabled;"Color"->panelKey=="Colors";"Layers"->panelKey=="Layers";"Actions"->panelKey=="Actions";"Adjustments"->panelKey=="Adjustments";else->session.tool==symbol};view.swatch=session.color;view.invalidate()}
+        for((symbol,view)in icons){view.activeTool=when(symbol){"Paint"->session.tool=="Paint" && !session.paintMixingEnabled;"Paint Mixing"->session.tool=="Paint" && session.paintMixingEnabled;"Color"->panelKey=="Colors";"Layers"->panelKey=="Layers";"Actions"->panelKey=="Actions";"Adjustments"->panelKey=="Adjustments";else->session.tool==symbol};view.swatch=session.color;if(symbol=="Paint Mixing"){view.mixingEnabled=session.paintMixingEnabled;if(android.os.Build.VERSION.SDK_INT>=30)view.stateDescription=if(session.paintMixingEnabled)"On" else "Off"};view.invalidate()}
         if(::sizeSlider.isInitialized){sizeSlider.value=sqrt((if(session.tool=="Liquify")canvas.liquify.size else session.size)/600f);sizeSlider.contentDescription=if(session.tool=="Liquify")"Liquify size"else"Brush size"}
         if(::opacitySlider.isInitialized){opacitySlider.value=if(session.tool=="Liquify")canvas.liquify.strength else session.opacity;opacitySlider.contentDescription=if(session.tool=="Liquify")"Liquify strength"else"Brush opacity"}
         if(::bottom.isInitialized)updateBottom()
@@ -350,6 +350,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         activity.cancelRecordingShortcut()
         departingPanel?.let{it.animate().cancel();removeView(it)};departingPanel=null
         val old=panel ?: return false
+        if(panelKey=="Adjustment")session.command("adjustCommit")
         panelRevision++
         panel=null;panelKey="";departingPanel=old
         StudioMotion.dismiss(old){removeView(old);if(departingPanel===old)departingPanel=null}
@@ -359,6 +360,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
     private var replacingPanel=false
     private var panelIsLeft=false
     private fun panel(key:String,title:String,height:Int=480,left:Boolean=false,extra:(LinearLayout)->Unit={},footer:(LinearLayout)->Unit={},content:(LinearLayout)->Unit){
+        if(panelKey=="Adjustment" && key!="Adjustment")session.command("adjustCommit")
         panelRevision++
         val previous=if(replacingPanel && panelIsLeft==left)panel as? LinearLayout else null
         if(panelKey==key && !replacingPanel){dismissPanel();return};if(previous==null)dismissPanel();departingPanel?.let{it.animate().cancel();removeView(it)};departingPanel=null;panelKey=key;panelIsLeft=left
@@ -518,6 +520,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
             }
         }
     }
+    private val persistWheelColor=Runnable{activity.savePreferences()}
     private fun currentPreset()=session.preset.copy(kind=session.currentBrush.kind,colorLayout=session.currentBrush.colorLayout,size=session.size,flow=session.flow,pressureSize=session.pressureSize,pressureOpacity=session.pressureOpacity,fadeLength=session.fadeLength,opacity=session.opacity,stabilization=session.stabilization,hardness=session.eraserHardness,colorMode=session.currentBrush.colorMode,colorCycle=session.currentBrush.colorCycle,wetMix=session.currentBrush.wetMix,wetPickup=session.currentBrush.wetPickup,wetness=session.currentBrush.wetness,palette=session.currentBrush.palette)
     private fun saveLibraryBrush(){
         val library=BrushLibrary(activity);val p=currentPreset()
@@ -565,12 +568,11 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         libraryMenu(p.name,options)
     }
     private fun paintMixing(){rebuildPanel{panel("Paint Mixing","Paint Mixing",570){body->
-        body.addView(text("Mix paint already on the active layer.",14f,theme.secondary))
+        body.addView(text("Pick up paint on the active layer. In clear areas, your selected color gradually refills the brush.",14f,theme.secondary))
         toggle(body,"Mixing enabled",session.paintMixingEnabled){session.paintMixingEnabled=it;activity.savePreferences();refreshTools()}
         brushSlider(body,"Mix strength",session.paintBrush.wetMix){session.paintBrush.wetMix=it;activity.savePreferences()}
         brushSlider(body,"Color pickup",session.paintBrush.wetPickup){session.paintBrush.wetPickup=it;activity.savePreferences()}
         brushSlider(body,"Wetness",session.paintBrush.wetness){session.paintBrush.wetness=it;activity.savePreferences()}
-        body.addView(row("Brush tip",session.preset.name){rebuildPanel(::brushes)})
         body.addView(row("Done"){dismissPanel()})
     }}}
     private fun brushSlider(body:LinearLayout,label:String,value:Float,changed:(Float)->Unit){
@@ -586,7 +588,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         }){body->
             body.addView(RecentColorRow(activity){session.color=it;activity.savePreferences();refreshTools();rebuildPanel(::colors)})
             if(colorTab in listOf("Disc","Classic","Harmony")){
-                body.addView(ColorDisc(activity,session.color,colorTab=="Classic"){session.color=it;refreshTools();activity.savePreferences()},LinearLayout.LayoutParams(-1,dp(282)))
+                body.addView(ColorDisc(activity,session.color,colorTab=="Classic"){session.color=it;refreshTools();removeCallbacks(persistWheelColor);postDelayed(persistWheelColor,150)},LinearLayout.LayoutParams(-1,dp(282)))
                 if(colorTab=="Harmony"){
                     val hsv=FloatArray(3);Color.colorToHSV(session.color,hsv)
                     val row=LinearLayout(activity)
@@ -602,7 +604,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
             }
             body.addView(row("Palette",palettes.active.name){choosePalette()})
             body.addView(PaletteGrid(activity,palettes.active.colors,
-                pick={session.color=it;refreshTools();activity.savePreferences()},
+                pick={session.color=it;refreshTools();activity.savePreferences();rebuildPanel(::colors)},
                 replace={palettes.replace(it,session.color);rebuildPanel(::colors)},
                 drop={addPaletteColor(it)}))
             body.addView(row("Add current color","+"){addPaletteColor(session.color)})
@@ -632,11 +634,14 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         }.show()
     }
 
+    private var addingLayer=false
     private fun layers(){
         if(selectedLayerGroup!=null && (0 until (session.info.optJSONArray("groups")?.length()?:0)).none{session.info.getJSONArray("groups").getJSONObject(it).getLong("id")==selectedLayerGroup})selectedLayerGroup=null
-        panel("Layers","Layers",710,extra={h->h.addView(text("Group",14f).apply{setPadding(dp(10),0,dp(10),0);isClickable=true;contentDescription="Create layer group";setOnClickListener{newGroupForm()}});h.addView(icon("Add"){
+        panel("Layers","Layers",710,extra={h->h.addView(icon("Adjustments"){adjustAsLayer=true;rebuildPanel(::adjustments)}.apply{contentDescription="Add adjustment layer";tooltipText="Adjustment layer";background=rounded(theme.track,12)},LinearLayout.LayoutParams(dp(40),dp(40)).apply{marginEnd=dp(4)});h.addView(text("Group",14f).apply{setPadding(dp(10),0,dp(10),0);isClickable=true;contentDescription="Create layer group";setOnClickListener{newGroupForm()}});h.addView(icon("Add"){
+            if(addingLayer)return@icon
+            addingLayer=true;showNotice("Adding layer…")
             val revision=panelRevision;val group=selectedLayerGroup
-            session.command("add"){result->if(!result.has("error")){
+            session.command("add"){result->if(result.has("error"))addingLayer=false;if(!result.has("error")){
                 if(group!=null){val info=session.info;moveLayer(info.getJSONArray("layers").getJSONObject(info.getInt("active")).getLong("id"),null,group,true,expectedRevision=revision)}
                 else{refreshLayers(revision);activity.scheduleSave()}
             }}
@@ -686,9 +691,10 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                 for(g in ancestors){if(hidden)break;if(seenGroups.add(g.getLong("id")))header(g);hidden=g.optBoolean("collapsed")}
                 if(hidden)continue
                 val layerRow=LinearLayout(activity).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(5),dp(5),dp(8),dp(5));background=rounded(if(i==active && selectedLayerGroup==null)blue else 0x443d3d3d,StudioShape.CORNER_DP);isClickable=true;isFocusable=true}
+                if(layer.optBoolean("clipping"))layerRow.addView(text("↳",22f).apply{gravity=Gravity.CENTER;contentDescription="Clipping Mask enabled for $name";tooltipText="Clipping Mask enabled"},LinearLayout.LayoutParams(dp(24),dp(48)))
                 val thumbnail=FrameLayout(activity).apply{background=rounded(0x336e777c,StudioShape.CORNER_DP);clipToOutline=true}
                 thumbnail.addView(ImageView(activity).apply{scaleType=ImageView.ScaleType.FIT_CENTER;setImageBitmap(session.layerThumbnails.getOrNull(i))},LayoutParams(-1,-1));layerRow.addView(thumbnail,LinearLayout.LayoutParams(dp(56),dp(56)))
-                layerRow.addView(text(name+(if(layer.optBoolean("locked"))" · Locked" else "")+(if(layer.optBoolean("hasMask"))" · Mask" else ""),16f),LinearLayout.LayoutParams(0,-1,1f))
+                layerRow.addView(text(name+(if(layer.optBoolean("locked"))" · Locked" else "")+(if(layer.optBoolean("hasMask"))" · Mask" else "")+(if(layer.optBoolean("alphaLock"))" · α Lock" else ""),16f),LinearLayout.LayoutParams(0,-1,1f))
                 if(layer.optBoolean("hasMask"))layerRow.addView(text(if(i==active && session.info.optBoolean("maskEditing"))"[M]"else"M",14f).apply{gravity=Gravity.CENTER;isClickable=true;contentDescription="Edit mask for $name";tooltipText="Edit layer mask";setOnClickListener{session.command("active",JSONObject().put("index",i)){maskAction("edit")}}},LinearLayout.LayoutParams(dp(40),dp(48)))
                 val dropdown=LinearLayout(activity).apply{orientation=LinearLayout.VERTICAL;visibility=GONE;setPadding(dp(8),dp(10),dp(8),dp(12));background=rounded(0x33373737,StudioShape.CORNER_DP)}
                 expanded.add(dropdown)
@@ -741,7 +747,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
     }
     private fun refreshLayers(expectedRevision:Long=panelRevision,after:()->Unit={}){
         val oldScroll=(panel as? ViewGroup)?.let{root->(0 until root.childCount).map{root.getChildAt(it)}.filterIsInstance<ScrollView>().firstOrNull()}?.scrollY?:0
-        session.thumbnails{if(panel!=null && panelRevision==expectedRevision){rebuildPanel(::layers)
+        session.thumbnails{addingLayer=false;if(panel!=null && panelRevision==expectedRevision){rebuildPanel(::layers)
             (panel as? ViewGroup)?.let{root->(0 until root.childCount).map{root.getChildAt(it)}.filterIsInstance<ScrollView>().firstOrNull()}?.let{scroll->scroll.post{scroll.scrollTo(0,oldScroll)}}
             after()}}
     }
@@ -881,7 +887,10 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                     AlertDialog.Builder(activity).setTitle("Blend Mode").setSingleChoiceItems(modes,modes.indexOf(l.getString("blend"))){dialog,which->session.command("layer",JSONObject().put("blend",modes[which])){rebuildPanel(::layers);activity.scheduleSave()};dialog.dismiss()}.setNegativeButton("Cancel",null).show()
                 })
                 toggle(body,"Alpha Lock",l.getBoolean("alphaLock")){v->session.command("layer",JSONObject().put("alphaLock",v));activity.scheduleSave()}
-                if(index>0)toggle(body,"Clipping Mask",l.getBoolean("clipping")){v->session.command("layer",JSONObject().put("clipping",v));activity.scheduleSave()}
+                if(index>0){
+                    toggle(body,"Clipping Mask",l.getBoolean("clipping")){v->session.command("layer",JSONObject().put("clipping",v));activity.scheduleSave()}
+                    body.addView(text("Clips to the layer or combined group directly below. Place this layer outside and above a group to clip to its contents.",12f).apply{setTextColor(theme.secondary);setPadding(dp(20),dp(4),dp(20),dp(12))})
+                }
                 if(!l.optBoolean("hasMask"))body.addView(row("Add layer mask"){maskAction("add")})
                 else{
                     body.addView(row("Edit layer mask"){maskAction("edit")});body.addView(row("Select layer pixels"){maskAction("pixels")})
@@ -954,8 +963,8 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                 body.addView(row("Flip canvas vertically"){session.command("flipCanvas",JSONObject().put("horizontal",false));canvas.deselect();activity.scheduleSave()})
             }
             "Share"->{body.addView(text("Save a copy to your device",14f,0xffbcc5cc.toInt()),LinearLayout.LayoutParams(-1,dp(40)));for(format in listOf("Inkstone","PNG","JPEG","PSD"))body.addView(row(format,if(format=="Inkstone" || format=="PSD")"Editable layers" else "Flattened image"){dismissPanel();activity.export(format)})}
-            "Video"->{body.addView(text("Time-lapse recording is not available in this preview.",15f,0xffbfc8cb.toInt()),LinearLayout.LayoutParams(-1,dp(90)))}
-            "Help"->{body.addView(row("About Inkstone",activity.packageManager.getPackageInfo(activity.packageName,0).versionName?:"Preview"){activity.message("Independent Android painting app. See README and the parity tracker for supported features.")})}
+            "Video"->{TimelapseControls.populate(activity,body)}
+            "Help"->{body.addView(row("Tutorials","Short lessons for your tools"){dismissPanel();Tutorials.show(activity)});body.addView(row("About Inkstone",activity.packageManager.getPackageInfo(activity.packageName,0).versionName?:"Preview"){activity.message("Independent Android painting app. See README and the parity tracker for supported features.")})}
             "Prefs"->{
                 val rendering=preferenceGroup(body)
                 rendering.addView(row("Drawing renderer",if(session.rendererMode=="auto")"GPU · Auto" else "CPU"){rendererSettings()})
@@ -1105,14 +1114,25 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
             }
         }
     }
+    private var adjustAsLayer=false
     private fun adjustments(){
         if(panelKey=="Adjustments"){dismissPanel();return}
         if(panel!=null && panelIsLeft && !replacingPanel){rebuildPanel(::adjustments);return}
         panel("Adjustments","Adjustments",440,left=true){body->
             body.addView(row("Liquify"){dismissPanel();session.tool="Liquify";canvas.liquify.begin();refreshTools();activity.deferAutosave();showNotice("Liquify · drag to deform, Done to apply")})
             for(kind in listOf("Brightness","Saturation","Blur","Grayscale","Invert"))body.addView(row(kind){
-                if(kind in listOf("Grayscale","Invert")){session.command("adjust",JSONObject().put("kind",kind));dismissPanel();activity.scheduleSave()}
-                else adjustmentSlider(kind)
+                if(!adjustAsLayer || kind=="Blur")adjustmentSlider(kind)else{
+                    val current=session.info.getJSONArray("layers").getJSONObject(session.info.getInt("active"))
+                    fun edit(){rebuildPanel{panel("Adjustment",kind,250,left=true){controls->
+                        controls.addView(row("← Back to Adjustments"){rebuildPanel(::adjustments)})
+                        val existing=session.info.getJSONArray("layers").getJSONObject(session.info.getInt("active")).optJSONArray("adjustment")
+                        val prior=existing?.takeIf{it.optString(0)==kind}?.optDouble(1,0.0)?.toFloat()?:if(kind in listOf("Invert","Grayscale"))1f else 0f
+                        slider(controls,kind,if(kind in listOf("Invert","Grayscale"))prior else (prior+1)/2){value->session.command("layer",JSONObject().put("adjustmentKind",kind).put("amount",if(kind in listOf("Invert","Grayscale"))value else (value-.5f)*2));activity.scheduleSave()}
+                    }}}
+                    // Reuse the active adjustment layer only for the same kind; otherwise add a new one.
+                    // Invert/Grayscale start at full strength so the new layer has a visible effect.
+                    if(current.optJSONArray("adjustment")?.optString(0)==kind)edit()else session.command("add"){r->if(!r.has("error"))session.command("layer",JSONObject().put("name","$kind adjustment").put("adjustmentKind",kind).put("amount",if(kind in listOf("Invert","Grayscale"))1 else 0)){edit()}}
+                }
             })
         }
     }
@@ -1123,11 +1143,10 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
     private fun adjustmentSlider(kind:String){
         rebuildPanel{
             panel("Adjustment",kind,250,left=true){body->
-                body.addView(row("← Back to Adjustments"){rebuildPanel(::adjustments)})
+                body.addView(row("← Back to Adjustments"){session.command("adjustCommit");rebuildPanel(::adjustments)})
                 var amount=if(kind=="Blur").25f else .5f
-                slider(body,kind,amount){amount=it}
-                body.addView(row("Apply"){session.command("adjust",JSONObject().put("kind",kind).put("amount",if(kind=="Blur")amount else (amount-.5f)*2));dismissPanel();activity.scheduleSave()})
-                body.addView(row("Cancel"){rebuildPanel(::adjustments)})
+                slider(body,kind,amount){amount=it;session.command("adjustPreview",JSONObject().put("kind",kind).put("amount",if(kind in listOf("Blur","Invert","Grayscale"))amount else (amount-.5f)*2))}
+                body.addView(row("Reset"){session.command("floodCancel");rebuildPanel(::adjustments)})
             }
         }
     }

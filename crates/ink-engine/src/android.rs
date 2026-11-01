@@ -46,13 +46,16 @@ pub extern "system" fn Java_art_inkstone_NativeBridge_stroke(env:JNIEnv,_this:JO
     let mut guard=engines().lock().unwrap();let Some(e)=guard.get_mut(&id) else{return;};
     if phase==3 {e.cancel();return;}
     let brush=Brush {kind:kind as u8,color:color as u32,size,opacity,flow,stabilization,pressure_size,pressure_opacity,fade_length};
+    if phase==4 {
+        let points:Vec<_>=values.chunks_exact(stride).map(|p|Sample{x:p[0],y:p[1],pressure:p[2],tilt:p[3]}).collect();
+        e.replace_stroke(&points,brush);return;
+    }
     if phase!=0 && !values.is_empty(){e.update_brush(brush);}
     for (i,p) in values.chunks_exact(stride).enumerate() {
         let sample=Sample{x:p[0],y:p[1],pressure:p[2],tilt:p[3]};
-        if phase==0 && i==0 {e.begin(sample,brush);if stride==5{e.set_sample_time(p[4]);}}
+        if phase==0 && i==0 {if stride==5{e.begin_timed(sample,brush,p[4]);}else{e.begin(sample,brush);}}
         else if stride==5{e.sample_timed(sample,p[4]);}else{e.sample(sample);}
     }
-    e.flush_gpu();
     if phase==2 {e.end();}
 }
 #[no_mangle]
@@ -68,7 +71,7 @@ pub extern "system" fn Java_art_inkstone_NativeBridge_render(env:JNIEnv,_this:JO
 #[no_mangle]
 pub extern "system" fn Java_art_inkstone_NativeBridge_save(env:JNIEnv,_this:JObject,id:jlong)->jbyteArray {
     let mut guard=engines().lock().unwrap();let Some(e)=guard.get_mut(&id) else{return std::ptr::null_mut();};
-    match e.save() {Ok(bytes)=>env.byte_array_from_slice(&bytes).map(|a|a.into_raw()).unwrap_or(std::ptr::null_mut()),Err(_)=>std::ptr::null_mut()}
+    match e.save_compressed() {Ok(bytes)=>env.byte_array_from_slice(&bytes).map(|a|a.into_raw()).unwrap_or(std::ptr::null_mut()),Err(_)=>std::ptr::null_mut()}
 }
 #[no_mangle]
 pub extern "system" fn Java_art_inkstone_NativeBridge_load(env:JNIEnv,_this:JObject,id:jlong,bytes:JByteArray)->jstring {
@@ -96,7 +99,7 @@ pub extern "system" fn Java_art_inkstone_NativeBridge_importPixels(env:JNIEnv,_t
 #[no_mangle]
 pub extern "system" fn Java_art_inkstone_NativeBridge_thumbnails(env:JNIEnv,_this:JObject,id:jlong,size:jint)->jintArray {
     let size=size.clamp(16,128) as usize;
-    let guard=engines().lock().unwrap();let Some(e)=guard.get(&id) else{return std::ptr::null_mut();};
+    let mut guard=engines().lock().unwrap();let Some(e)=guard.get_mut(&id) else{return std::ptr::null_mut();};e.flush_gpu();
     let mut pixels=Vec::with_capacity(e.state.layers.len()*size*size);
     for l in &e.state.layers {for y in 0..size {for x in 0..size {
         let sx=x*e.width/size;let sy=y*e.height/size;
@@ -120,13 +123,54 @@ pub extern "system" fn Java_art_inkstone_NativeBridge_renderPatch(env:JNIEnv,_th
     array.into_raw()
 }
 
+/// Writes the composited patch into a caller-owned, reused pixel buffer and returns only
+/// the small header (x, y, w, h) plus exterior tiles, so no canvas-sized Java array is
+/// allocated per frame.
+#[no_mangle]
+pub extern "system" fn Java_art_inkstone_NativeBridge_patchCapacity(_env:JNIEnv,_this:JObject,id:jlong,force:jboolean)->jint {
+    let mut guard=engines().lock().unwrap();
+    let Some(e)=guard.get_mut(&id) else{return 0;};
+    e.flush_gpu();
+    e.patch_pixels(force!=0) as jint
+}
+
+/// Returns `[-1, needed]` without changing engine state when `out` is too small, so the host can
+/// grow its buffer and retry. Normal results are `[x, y, w, h]` plus exterior tiles.
+#[no_mangle]
+pub extern "system" fn Java_art_inkstone_NativeBridge_renderPatchInto(env:JNIEnv,_this:JObject,id:jlong,force:jboolean,out:JIntArray)->jintArray {
+    let capacity=env.get_array_length(&out).unwrap_or(0).max(0) as usize;
+    let mut guard=engines().lock().unwrap();
+    let Some(e)=guard.get_mut(&id) else{return std::ptr::null_mut();};
+    e.flush_gpu();
+    let needed=e.patch_pixels(force!=0);
+    if capacity<needed{
+        let Ok(array)=env.new_int_array(2) else{return std::ptr::null_mut();};
+        if env.set_int_array_region(&array,0,&[-1,needed as jint]).is_err(){return std::ptr::null_mut();}
+        return array.into_raw();
+    }
+    if force!=0{e.exterior_dirty=true;}
+    let interior=e.render_patch(force!=0);let exterior=e.exterior_patch();
+    if interior.is_none() && exterior.is_none(){return std::ptr::null_mut();}
+    let mut header=vec![0,0,0,0];
+    if let Some(patch)=interior{
+        if env.set_int_array_region(&out,0,&patch[4..]).is_err(){e.dirty=true;e.exterior_dirty=true;return std::ptr::null_mut();}
+        header.copy_from_slice(&patch[..4]);
+    }
+    if let Some(exterior)=exterior{header.extend(exterior);}
+    let Ok(array)=env.new_int_array(header.len() as i32) else { e.dirty=true;e.exterior_dirty=true;return std::ptr::null_mut(); };
+    if env.set_int_array_region(&array,0,&header).is_err(){e.dirty=true;e.exterior_dirty=true;return std::ptr::null_mut();}
+    array.into_raw()
+}
+
 #[no_mangle]
 pub extern "system" fn Java_art_inkstone_NativeBridge_preview(env:JNIEnv,_this:JObject,id:jlong)->jintArray {
-    let guard=engines().lock().unwrap();let Some(e)=guard.get(&id) else{return std::ptr::null_mut();};
+    let mut guard=engines().lock().unwrap();let Some(e)=guard.get_mut(&id) else{return std::ptr::null_mut();};e.flush_gpu();
     let scale=(480.0/e.width.max(e.height) as f32).min(1.0);
     let w=(e.width as f32*scale).max(1.0) as usize;let h=(e.height as f32*scale).max(1.0) as usize;
     let mut pixels=Vec::with_capacity(2+w*h);pixels.extend([w as i32,h as i32]);
-    for y in 0..h {for x in 0..w {pixels.push(e.color_at(x*e.width/w,y*e.height/h,true) as i32);}}
+    let layers=e.compositing_layers();let plan=groups::PreparedComposite::new(&e.state.groups,&layers);
+    let bg=if e.state.background_visible{e.state.background}else{0};
+    for y in 0..h {for x in 0..w {let idx=y*e.height/h*e.width+x*e.width/w;pixels.push(plan.color(bg,|l|(l.pixels[idx],l.mask_coverage(idx))) as i32);}}
     let Ok(array)=env.new_int_array(pixels.len() as i32) else{return std::ptr::null_mut();};
     if env.set_int_array_region(&array,0,&pixels).is_err(){return std::ptr::null_mut();}array.into_raw()
 }

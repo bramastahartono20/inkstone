@@ -25,9 +25,9 @@ val brushPresets = listOf(
     BrushPreset("Soft Pencil", "Sketching", 1, 22f, .65f, .5f, .8f),
     BrushPreset("Compressed Charcoal", "Charcoals", 3, 48f, .8f, .55f, .5f),
     BrushPreset("Willow", "Charcoals", 3, 14f, .65f, .9f, .65f),
-    BrushPreset("Round Paint", "Painting", 0, 42f, .55f, .7f, .2f),
+    BrushPreset("Round Paint", "Painting", 41, 42f, .55f, .7f, .2f),
     BrushPreset("Water Wash", "Painting", 4, 90f, .8f, .4f, .6f),
-    BrushPreset("Flat Brush", "Painting", 7, 55f, .7f, .6f, .2f),
+    BrushPreset("Flat Brush", "Painting", 42, 55f, .7f, .6f, .2f),
     BrushPreset("Soft Airbrush", "Airbrushing", 2, 110f, .7f, .25f, .7f),
     BrushPreset("Fine Airbrush", "Airbrushing", 2, 32f, .9f, .4f, .5f),
     BrushPreset("Monoline", "Calligraphy", 0, 16f, pressureSize = 0f),
@@ -63,13 +63,21 @@ private fun additionalPresets():List<BrushPreset> {
         BrushPreset("Dust","Elements",10,130f,.6f,.1f,.4f),
         BrushPreset("Fine Mist","Spraypaints",10,100f,.75f,.15f,.4f),
         BrushPreset("Wide Spray","Spraypaints",10,220f,.6f,.1f,.3f),
-        BrushPreset("Dry Surface","Materials",14,60f,.7f,.4f,.3f),
-        BrushPreset("Faded Ink","Vintage",13,20f,.5f,.6f,.5f),
+        BrushPreset("Dry Surface","Materials",33,60f,.7f,.4f,.3f),
+        BrushPreset("Faded Ink","Vintage",40,20f,.5f,.6f,.5f),
         BrushPreset("Soft Glow","Luminance",2,160f,.45f,.2f,.5f),
         BrushPreset("Hard Edge","Industrial",12,48f,1f,.1f),
-        BrushPreset("Soft Grain","Organic",14,65f,.55f,.5f,.3f),
+        BrushPreset("Soft Grain","Organic",35,65f,.55f,.5f,.3f),
         BrushPreset("Diluted Wash","Water",4,130f,.6f,.3f,.5f),
-        BrushPreset("Soft Wash","Water",2,180f,.25f,.15f,.5f),
+        BrushPreset("Soft Wash","Water",4,180f,.45f,.15f,.5f,wetMix=.45f,wetPickup=.3f,wetness=.65f),
+        BrushPreset("Linen Weave","Materials",32,85f,.8f,.25f,.2f),
+        BrushPreset("Leather Grain","Materials",34,90f,.8f,.3f,.2f),
+        BrushPreset("Etching","Vintage",38,45f,.75f,.2f,.2f),
+        BrushPreset("Halftone Print","Vintage",39,70f,.8f,.2f,.1f),
+        BrushPreset("Moss Stipple","Organic",36,85f,.85f,.3f,.2f),
+        BrushPreset("Leaf Scatter","Organic",37,110f,.8f,.15f,.2f),
+        BrushPreset("Dry Bristle","Painting",42,70f,.8f,.3f,.15f),
+        BrushPreset("Gouache","Painting",41,65f,.9f,.35f,.15f),
         BrushPreset("Broad Lettering","Calligraphy",7,65f,.8f,.7f)
     )
     return air+originals
@@ -99,7 +107,12 @@ class DrawingSession(width: Int, height: Int) : Closeable {
     @Volatile internal var fullyClosed=false; private set
     @Volatile var info = JSONObject(NativeBridge.command(handle, "{\"op\":\"info\"}")); private set
     var bitmap: Bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); private set
+    /** Screen copy of [bitmap] in tiles; only touched on the main thread. */
+    internal var display=DisplayTiles(width,height); private set
     private val revision = AtomicLong(0)
+    private val captureRevision=AtomicLong(0)
+    private val forceCapture=AtomicBoolean(false)
+    internal var onCommittedFrame:(Bitmap)->Unit={}
     private val renderPending = AtomicBoolean(false)
     internal var frameSerial=0L;private set
     var onFrame: () -> Unit = {}
@@ -198,6 +211,21 @@ class DrawingSession(width: Int, height: Int) : Closeable {
         onBrushChosen(tool,p)
     }
 
+    private data class EffectKey(val mode:String,val layout:String,val cycle:Float,val mix:Float,val pickup:Float,val wetness:Float,val palette:List<Int>)
+    private var effectKey:EffectKey?=null
+    private var effectJson="{}"
+    private fun strokeEffects(brush:ToolBrush,solid:Boolean):String {
+        val key=EffectKey(if(solid)"Solid" else brush.colorMode,brush.colorLayout,brush.colorCycle,
+            if(solid || !paintMixingEnabled)0f else brush.wetMix,brush.wetPickup,brush.wetness,brush.palette)
+        if(key!=effectKey){
+            effectKey=key.copy(palette=key.palette.toList())
+            effectJson=JSONObject().put("op","brushEffects").put("mode",key.mode).put("layout",key.layout)
+                .put("cycle",key.cycle.toDouble()).put("mix",key.mix.toDouble()).put("pickup",key.pickup.toDouble())
+                .put("wetness",key.wetness.toDouble()).put("palette",org.json.JSONArray(key.palette.map{it.toLong() and 0xffffffffL})).toString()
+        }
+        return effectJson
+    }
+
     fun stroke(phase: Int, input: FloatArray, eraser: Boolean = false, times:FloatArray?=null) {
         if (closed) return
         if(info.optBoolean("maskEditing") && tool=="Smudge"){if(phase==0)onError("Use Paint or Erase to edit a layer mask");return}
@@ -210,7 +238,7 @@ class DrawingSession(width: Int, height: Int) : Closeable {
         val ink=if(erasing)(eraserHardness.coerceIn(0f,1f)*255+.5f).toInt() else color
         val timed=times!=null && times.size==input.size/4
         val samples=if(timed)FloatArray(input.size/4*5){i->if(i%5==4)times!![i/5] else input[i/5*4+i%5]}else input
-        val settings=StrokeSettings(kind,ink,if(dynamicBrushScaling)brush.size else brush.size/viewZoom.coerceAtLeast(.02f),brush.opacity,brush.flow,stabilization,if(pressureEnabled)brush.pressureSize else 0f,if(pressureEnabled)brush.pressureOpacity else 0f,brush.fadeLength,if(timed)5 else 4,org.json.JSONObject().put("op","brushEffects").put("mode",if(erasing || tool=="Smudge")"Solid" else brush.colorMode).put("layout",brush.colorLayout).put("cycle",brush.colorCycle.toDouble()).put("mix",if(erasing || tool=="Smudge" || !paintMixingEnabled)0.0 else brush.wetMix.toDouble()).put("pickup",brush.wetPickup.toDouble()).put("wetness",brush.wetness.toDouble()).put("palette",org.json.JSONArray(brush.palette.map{it.toLong() and 0xffffffffL})).toString())
+        val settings=StrokeSettings(kind,ink,if(dynamicBrushScaling)brush.size else brush.size/viewZoom.coerceAtLeast(.02f),brush.opacity,brush.flow,stabilization,if(pressureEnabled)brush.pressureSize else 0f,if(pressureEnabled)brush.pressureOpacity else 0f,brush.fadeLength,if(timed)5 else 4,strokeEffects(brush,erasing || tool=="Smudge"))
         synchronized(inputLock){
             if(phase==1){
                 val pending=pendingMoves
@@ -221,7 +249,7 @@ class DrawingSession(width: Int, height: Int) : Closeable {
                         if(pendingMoves===batch)pendingMoves=null
                         FloatArray(batch.size).also{out->var offset=0;for(chunk in batch.chunks){chunk.copyInto(out,offset);offset+=chunk.size}}
                     }
-                    if(!disposed){sendStroke(1,merged,batch.settings);changed()}
+                    if(!disposed){sendStroke(1,merged,batch.settings);changed(record=true)}
                 }
             }else{
                 pendingMoves=null
@@ -229,14 +257,14 @@ class DrawingSession(width: Int, height: Int) : Closeable {
                     if(!disposed){sendStroke(phase,samples,settings);if(phase==2||phase==3)readInfo()
                         if(phase==2){val used=strokeRecentColor;strokeRecentColor=null;if(used!=null && info.isNull("inputError"))main.post{if(!closed)onColorUsed(used)}}
                         if(phase==3)strokeRecentColor=null
-                        changed()}
+                        changed(record=phase==2)}
                 }
             }
         }
     }
     private var shapeStroke=false
     private fun sendStroke(phase:Int,samples:FloatArray,s:StrokeSettings){
-        if(phase==0){strokeRecentColor=if(s.kind in 0..63 && s.kind !in listOf(5,6) && s.opacity>0 && s.flow>0 && !info.optBoolean("maskEditing") && info.optJSONArray("layers")?.optJSONObject(info.optInt("active"))?.optBoolean("locked")==false)s.color else null}
+        if(phase==0 || phase==4){strokeRecentColor=if(s.kind in 0..63 && s.kind !in listOf(5,6) && s.opacity>0 && s.flow>0 && !info.optBoolean("maskEditing") && info.optJSONArray("layers")?.optJSONObject(info.optInt("active"))?.optBoolean("locked")==false)s.color else null}
         if(phase==3)strokeRecentColor=null
         if(phase==0 || phase==3)shapeStroke=false
         if(phase==0 && s.effects!="{}")NativeBridge.command(handle,s.effects)
@@ -257,8 +285,7 @@ class DrawingSession(width: Int, height: Int) : Closeable {
             worker.execute{
                 val latest=synchronized(inputLock){val value=pendingShape;pendingShape=null;shapeQueued=false;value}
                 if(!disposed && latest!=null){
-                    val (s,points)=latest;sendStroke(3,floatArrayOf(),s);sendStroke(0,points.copyOfRange(0,4),s)
-                    if(points.size>4)sendStroke(1,points.copyOfRange(4,points.size),s)
+                    val (s,points)=latest;sendStroke(4,points,s)
                     shapeStroke=true
                     changed()
                 }
@@ -292,8 +319,31 @@ class DrawingSession(width: Int, height: Int) : Closeable {
         command(if(cancel)"floodCancel" else "floodCommit"){result->if(dropGeneration.get()==generation){dropActive=false;dropRecentColor=null};if(!cancel && !result.has("error") && used!=null)onColorUsed(used);then()}
     }
 
+    private var pendingAdjustment:JSONObject?=null
+    private var adjustmentQueued=false
+    private fun previewAdjustment(values:JSONObject){
+        beforeCommand("adjustPreview")
+        synchronized(inputLock){pendingAdjustment=values;if(adjustmentQueued)return;adjustmentQueued=true}
+        worker.execute{
+            val latest=synchronized(inputLock){val v=pendingAdjustment;pendingAdjustment=null;adjustmentQueued=false;v}
+            if(!disposed && latest!=null){latest.put("op","adjustPreview");val result=JSONObject(NativeBridge.command(handle,latest.toString()));if(result.has("error"))main.post{if(!closed)onError(result.getString("error"))}else{info=result;changed();main.post{if(!closed)onInfo()}}}
+        }
+    }
+    private var pendingLayerAdjust:JSONObject?=null
+    private var layerAdjustQueued=false
+    /** Adjustment-layer slider: keep only the newest value so drags never queue up behind slow composites. */
+    private fun adjustLayer(values:JSONObject){
+        beforeCommand("layer")
+        synchronized(inputLock){pendingLayerAdjust=values;pendingMoves=null;if(layerAdjustQueued)return;layerAdjustQueued=true}
+        worker.execute{
+            val latest=synchronized(inputLock){val v=pendingLayerAdjust;pendingLayerAdjust=null;layerAdjustQueued=false;v}
+            if(!disposed && latest!=null){latest.put("op","layer");val result=JSONObject(NativeBridge.command(handle,latest.toString()));if(result.has("error"))main.post{if(!closed)onError(result.getString("error"))}else{info=result;changed(record=true);main.post{if(!closed)onInfo()}}}
+        }
+    }
     fun command(op: String, values: JSONObject = JSONObject(), then: (JSONObject) -> Unit = {}) {
         if (closed) return
+        if(op=="adjustPreview"){previewAdjustment(values);return}
+        if(op=="layer" && values.has("adjustmentKind") && values.length()<=3 && values.keys().asSequence().all{it in setOf("adjustmentKind","amount","index")}){adjustLayer(values);return}
         beforeCommand(op)
         values.put("op", op)
         synchronized(inputLock){pendingMoves=null}
@@ -302,7 +352,7 @@ class DrawingSession(width: Int, height: Int) : Closeable {
             val result = JSONObject(NativeBridge.command(handle, values.toString()))
             if (result.has("error")) main.post { if (!closed) onError(result.getString("error")) }
             else if (result.has("layers")) info = result
-            changed()
+            changed(record=!result.has("error") && op !in listOf("info","pick","selectionPreview","exteriorPreview","historyDirectory","renderer","symmetry","brushEffects","nameLastUndo"))
             main.post { if (!closed) { onInfo();if(op in listOf("flood","fill") && !result.has("error") && !info.optBoolean("maskEditing"))onColorUsed(values.optLong("color",color.toLong() and 0xffffffffL).toInt());if(op in listOf("undo","redo") && !result.has("error"))onHistoryNotice(result.optString("historyNotice"));then(result) } }
         }
     }
@@ -321,8 +371,12 @@ class DrawingSession(width: Int, height: Int) : Closeable {
         main.post { if (!closed) { if(!info.isNull("inputError"))onError(info.getString("inputError"));onInfo() } }
     }
 
-    private fun changed() { revision.incrementAndGet(); requestRender() }
+    private fun changed(record:Boolean=false) {val version=revision.incrementAndGet();if(record)captureRevision.set(version);requestRender()}
+    internal fun captureNextFrame(){if(closed)return;forceCapture.set(true);captureRevision.set(revision.incrementAndGet());requestRender()}
 
+    // Reused across frames: only touched by the render worker while renderPending is set.
+    private var patchPixels=IntArray(0)
+    private companion object { const val SHRINK_ABOVE_PIXELS = 1 shl 20 }
     internal data class ExteriorTile(val x:Float,val y:Float,val bitmap:Bitmap)
     internal var exteriorTiles=listOf<ExteriorTile>();private set
 
@@ -333,9 +387,35 @@ class DrawingSession(width: Int, height: Int) : Closeable {
             val version = revision.get()
             val w = canvasWidth; val h = canvasHeight
             val resize=bitmap.width!=w || bitmap.height!=h
-            val patch=NativeBridge.renderPatch(handle,resize)
+            val patch=try{
+                // Size the buffer to this frame's patch, not the whole canvas, and let oversized
+                // buffers from full-canvas redraws go, so low-memory tablets keep the heap free.
+                val force=resize || forceCapture.getAndSet(false)
+                var result:IntArray?=null
+                var attempts=0
+                while(true){
+                    val needed=NativeBridge.patchCapacity(handle,force)
+                    if(patchPixels.size<needed || (patchPixels.size>needed*4 && patchPixels.size>SHRINK_ABOVE_PIXELS)){
+                        patchPixels=IntArray(0);patchPixels=IntArray(needed)
+                    }
+                    val out=NativeBridge.renderPatchInto(handle,force,patchPixels)
+                    if(out!=null && out.size==2 && out[0]==-1){
+                        // Buffer still too small after two grows: skip this frame rather than parse the sentinel.
+                        if(attempts>=2)break
+                        attempts++;patchPixels=IntArray(0);patchPixels=IntArray(out[1]);continue
+                    }
+                    result=out;break
+                }
+                result
+            }catch(e:OutOfMemoryError){
+                patchPixels=IntArray(0)
+                renderPending.set(false)
+                main.post{if(!closed)onError("Memori perangkat hampir penuh. Gabungkan beberapa layer atau gunakan kanvas yang lebih kecil.")}
+                return@execute
+            }
+            val pixels=patchPixels
             var exterior:List<ExteriorTile>?=null;var exteriorFull=false
-            if(patch!=null){var offset=4+patch[2]*patch[3]
+            if(patch!=null){var offset=4
                 if(offset+3<=patch.size && patch[offset]==0x45585431){
                     exteriorFull=patch[offset+1]!=0;val count=patch[offset+2];offset+=3
                     exterior=(0 until count).map{val x=patch[offset];val y=patch[offset+1];offset+=2;val tile=ExteriorTile(x.toFloat(),y.toFloat(),Bitmap.createBitmap(patch,offset,64,64,64,Bitmap.Config.ARGB_8888));offset+=4096;tile}
@@ -348,9 +428,16 @@ class DrawingSession(width: Int, height: Int) : Closeable {
                     exteriorTiles=kept+updates
                 }else if(closed){exterior?.forEach{it.bitmap.recycle()}}
                 if (!closed && (patch!=null || exterior!=null)) {
-                    if(resize)bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888)
-                    if(patch!=null && patch[2]>0 && patch[3]>0)bitmap.setPixels(patch,4,patch[2],patch[0],patch[1],patch[2],patch[3])
+                    if(resize){bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);display=DisplayTiles(w,h)}
+                    if(patch!=null && patch[2]>0 && patch[3]>0){
+                        bitmap.setPixels(pixels,0,patch[2],patch[0],patch[1],patch[2],patch[3])
+                        display.update(pixels,patch[0],patch[1],patch[2],patch[3])
+                    }
                     frameSerial++;onFrame()
+                }
+                if(!closed){
+                    val capture=captureRevision.get()
+                    if(capture>0 && version>=capture && captureRevision.compareAndSet(capture,0))onCommittedFrame(bitmap)
                 }
                 renderPending.set(false)
                 if (!closed && revision.get() != version) requestRender()
@@ -461,7 +548,10 @@ class DrawingSession(width: Int, height: Int) : Closeable {
             val images = if (data == null) emptyList() else (0 until data.size / (size * size)).map { index ->
                 Bitmap.createBitmap(data, index * size * size, size, size, size, Bitmap.Config.ARGB_8888)
             }
-            main.post { if (!closed) { layerThumbnails = images; then() } }
+            main.post {
+                if (!closed) {val previous=layerThumbnails;layerThumbnails=images;then();previous.forEach{it.recycle()}}
+                else images.forEach{it.recycle()}
+            }
         }
     }
 

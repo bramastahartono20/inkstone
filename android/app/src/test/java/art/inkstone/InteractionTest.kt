@@ -101,7 +101,7 @@ class InteractionTest{
         val color=checkNotNull(named(e,"Color"));color.getLocationInWindow(loc);val start=PointF(loc[0]-origin[0]+color.width/2f,loc[1]-origin[1]+color.height/2f);val target=e.canvas.transformViewPoint(30f,30f).apply{offset(e.canvas.left.toFloat(),e.canvas.top.toFloat())}
         single(e,MotionEvent.ACTION_DOWN,start);single(e,MotionEvent.ACTION_MOVE,target);single(e,MotionEvent.ACTION_UP,target);until{s.bitmap.getPixel(30,30)==s.color};assertTrue(s.penOnly);render(e,"preview2-touch-colordrop");done(c)
     }
-    @Test fun colorCircleFollowsDragThroughThresholdAndReturnsAfterCancel(){
+    @Test fun colorCircleLocksAtFillSeedDuringThresholdAndReturnsAfterCancel(){
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(160,120);val e=a.editor!!;val s=a.session!!;render(e,"preview3-before-drag")
         until{s.frameSerial>0};s.color=0xffd23b80.toInt();e.refreshTools()
         val control=checkNotNull(named(e,"Color"));val loc=IntArray(2);val origin=IntArray(2);control.getLocationInWindow(loc);e.getLocationInWindow(origin)
@@ -111,7 +111,7 @@ class InteractionTest{
         val overlay=e.findViewWithTag<View>("colordrop-drag-preview")
         fun circleAt(p:PointF){val b=Bitmap.createBitmap(e.width,e.height,Bitmap.Config.ARGB_8888);overlay.draw(Canvas(b));assertEquals("circle at $p overlay ${overlay.width}x${overlay.height}",s.color,b.getPixel(p.x.toInt(),p.y.toInt()));b.recycle()}
         circleAt(target);shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(250));circleAt(target)
-        val moved=PointF(target.x+80,target.y+25);single(e,MotionEvent.ACTION_MOVE,moved);circleAt(moved);render(e,"preview3-dragging-color")
+        val moved=PointF(target.x+80,target.y+25);single(e,MotionEvent.ACTION_MOVE,moved);circleAt(target);render(e,"preview3-dragging-color")
         single(e,MotionEvent.ACTION_CANCEL,moved);assertEquals(1f,control.alpha,0f)
         val b=Bitmap.createBitmap(e.width,e.height,Bitmap.Config.ARGB_8888);overlay.draw(Canvas(b));assertEquals(0,b.getPixel(moved.x.toInt(),moved.y.toInt()));b.recycle()
         var read=false;s.command("info"){read=true};until{read};assertEquals(0,s.info.optInt("undo"));done(c)

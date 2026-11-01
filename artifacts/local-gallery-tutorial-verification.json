@@ -1,0 +1,60 @@
+{
+  "apk": "inkstone-0.22-local-gallery-tutorial-debug.apk",
+  "sha256": "16bba2a29c83a5fd8a3c3edaf3c8f659bd23e62912623b93e4dabb333a5d0ef6",
+  "bytes": 15814778,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4427912,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1108928,
+          "alignment": 16384
+        },
+        {
+          "offset": 4288544,
+          "alignment": 16384
+        },
+        {
+          "offset": 4422632,
+          "alignment": 16384
+        }
+      ]
+    },
+    "x86_64": {
+      "bytes": 5028128,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1178560,
+          "alignment": 16384
+        },
+        {
+          "offset": 4878560,
+          "alignment": 16384
+        },
+        {
+          "offset": 5022800,
+          "alignment": 16384
+        }
+      ]
+    }
+  },
+  "static_checks_passed": true,
+  "androidTests": {
+    "art.inkstone.InteractionTest": 8,
+    "art.inkstone.MixingTimelapseTest": 8,
+    "art.inkstone.GalleryLibraryTest": 6
+  },
+  "deviceTested": false,
+  "published": false,
+  "lintWarnings": 137
+}

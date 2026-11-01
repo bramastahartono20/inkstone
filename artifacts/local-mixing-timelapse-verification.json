@@ -1,0 +1,126 @@
+{
+  "apk": "inkstone-0.22-local-mixing-timelapse-debug.apk",
+  "sha256": "0026f463f795a58996bdbd0f900924e41f4522a15111778bfd7171bd8398a478",
+  "bytes": 15814778,
+  "abis": {
+    "arm64-v8a": {
+      "bytes": 4427912,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1108928,
+          "alignment": 16384
+        },
+        {
+          "offset": 4288544,
+          "alignment": 16384
+        },
+        {
+          "offset": 4422632,
+          "alignment": 16384
+        }
+      ],
+      "matches_rebuilt_native_library": true
+    },
+    "x86_64": {
+      "bytes": 5028128,
+      "jni_methods": 14,
+      "load_segments": [
+        {
+          "offset": 0,
+          "alignment": 16384
+        },
+        {
+          "offset": 1178560,
+          "alignment": 16384
+        },
+        {
+          "offset": 4878560,
+          "alignment": 16384
+        },
+        {
+          "offset": 5022800,
+          "alignment": 16384
+        }
+      ],
+      "matches_rebuilt_native_library": true
+    }
+  },
+  "static_checks_passed": true,
+  "published": false,
+  "device_tested": false,
+  "base_commit": "85ecd15c3800e7579735cacca1a5b493dfd7f91e",
+  "previous_local_apk_sha256": "b12e3641ed6ef082193dbc931197bb8e254eca79e48b7d085c2bb968c790bf8b",
+  "native_cpu_tests": {
+    "passed": 119,
+    "failed": 0
+  },
+  "physical_metal_tests": {
+    "passed": 15,
+    "failed": 0
+  },
+  "android_tests": {
+    "tests": 147,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "android_lint": {
+    "errors": 0,
+    "warnings": 132
+  },
+  "total_tests_passed": 281,
+  "timelapse_video_validation": {
+    "decoder": "FFmpeg 7.1",
+    "decode_succeeded": true,
+    "frames": 21,
+    "dimensions": [
+      64,
+      48
+    ],
+    "fps": 12,
+    "sampled_frame_mean_rgb": [
+      [
+        255.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        252.0
+      ],
+      [
+        0.0,
+        255.0,
+        0.0
+      ]
+    ],
+    "software_fallback_tested": true,
+    "android_hardware_encoder_device_tested": false
+  },
+  "jcodec_sha256": "890329dad124e8b739c1d6602a59a53c8a474daddff265c2561e21c498496c81",
+  "apk_signing": {
+    "verified": true,
+    "scheme": "v2",
+    "certificate_sha256": "23bd46ca626fc975136cf1b2b2772a3d56df2e3a7ddd28899a660880f498e5d3"
+  },
+  "package_badging": "package: name='art.inkstone.preview' versionCode='35' versionName='0.22' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'",
+  "post_test_change": "Only corrected singular/plural frame status wording; final Kotlin compilation, lint and APK packaging passed.",
+  "source_sha256": {
+    "crates/ink-engine/src/lib.rs": "eb1c772c6a137bd2404d5e2939528b8b7eaa4c95fce0a16692c5401cc33e3c8f",
+    "crates/ink-engine/src/brush_color.rs": "bbeed9225064b4b25d0bb94766b05d1b8b8652f540c9ee496c0d9ee0395a95b2",
+    "android/app/src/main/java/art/inkstone/DrawingSession.kt": "3a0215ad49092ec810eb7f95b4515d9eecd321944d9c4ca2d32a85f572cd6627",
+    "android/app/src/main/java/art/inkstone/EditorView.kt": "84c1a614f72837ee353dd3b507e2ed3a547571a63b6e14ebdaa8c1991a295220",
+    "android/app/src/main/java/art/inkstone/ToolViews.kt": "3752456bbf302a32df909b30074f882a2183bdeceb523c27afa8e63828f56d9a",
+    "android/app/src/main/java/art/inkstone/MainActivity.kt": "c5de093fbbeeeda4e63d8053193afedadfeb4d22f9969832c00db053d56de24a",
+    "android/app/src/main/java/art/inkstone/TimelapseRecorder.kt": "cd4a9db9b9a88665db78a3ff95a2b33f1a347ec8c447ed44a624bb63d78a7e0e",
+    "android/app/src/main/java/art/inkstone/TimelapseVideo.kt": "e85217d50e37acd2bf5c79266ca6a3aa0d6779bbd669497ced967a50c070d524",
+    "android/app/src/main/java/art/inkstone/TimelapseControls.kt": "2b676a6c31edaad44de39cb35a570007204c3cf74d6e0066d7eaa7fbf193ebf0",
+    "android/app/src/main/java/art/inkstone/Tutorials.kt": "3fd98f24377f1437307f984738f3962cfbef8110e55a38fb79d998818c2d2d13"
+  }
+}

@@ -29,6 +29,18 @@ class GalleryLibraryTest {
     private fun find(v:View,label:String):View?{if(v.contentDescription==label || v is TextView && v.text.toString()==label)return v;if(v is ViewGroup)for(i in 0 until v.childCount)find(v.getChildAt(i),label)?.let{return it};return null}
     private fun until(test:()->Boolean){val end=System.nanoTime()+20_000_000_000;while(System.nanoTime()<end){shadowOf(Looper.getMainLooper()).idle();if(test())return;Thread.sleep(10)};error("Gallery timed out")}
     private fun render(v:View,name:String){shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(350));v.measure(View.MeasureSpec.makeMeasureSpec(1280,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(800,View.MeasureSpec.EXACTLY));v.layout(0,0,1280,800);v.invalidate();val b=Bitmap.createBitmap(1280,800,Bitmap.Config.ARGB_8888);v.draw(Canvas(b));File(System.getProperty("inkstone.artifacts"),name+".png").outputStream().use{b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle()}
+    @Test fun galleryCardsKeepTheirRatioAcrossPortraitLandscapeAndBack(){
+        val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();val id=seed(a.store,"Rotation check")
+        val gallery=GalleryView(a);a.setContentView(gallery)
+        fun layout(w:Int,h:Int){repeat(3){gallery.measure(View.MeasureSpec.makeMeasureSpec(w,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(h,View.MeasureSpec.EXACTLY));gallery.layout(0,0,w,h);shadowOf(Looper.getMainLooper()).idle()}}
+        for((w,h) in listOf(800 to 1280,1280 to 800,800 to 1280)){
+            layout(w,h)
+            val card=gallery.findViewWithTag<ViewGroup>("gallery:art:$id");val frame=card.getChildAt(0)
+            val ratio=frame.height.toFloat()/frame.width
+            assertTrue("Card ratio $ratio at $w x $h",ratio in .65f.. .88f)
+        }
+        c.pause().stop().destroy();until{a.io.isTerminated}
+    }
     @Test fun tagsAndStacksSurviveResaveDuplicateAndDissolvingWithoutDeletingArt(){
         val s=store();val id=seed(s,"Sketch");val stack=s.createStack("Studies");s.assignStack(listOf(id),stack);s.setTags(listOf(id),listOf(" Portrait ","portrait","Practice"))
         val created=s.list().first{it.id==id}.created;val b=Bitmap.createBitmap(64,64,Bitmap.Config.ARGB_8888);s.save(id,"Sketch",byteArrayOf(9,8),b);b.recycle()

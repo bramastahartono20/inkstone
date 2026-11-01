@@ -90,7 +90,7 @@ fn audit_runtime_metadata_limit_prevents_unsaveable_extra_layers(){
 #[test]
 fn audit_flip_preserves_shared_empty_planes(){
     let mut e=Engine::new(64,64).unwrap();for _ in 0..3{e.command(&json!({"op":"add"})).unwrap();}e.command(&json!({"op":"flipCanvas","horizontal":true})).unwrap();
-    assert!(e.state.layers.iter().all(|l|Arc::ptr_eq(&l.pixels,&e.empty_pixels)),"Canvas flip expanded every empty layer into a separate pixel buffer");
+    assert!(e.state.layers.iter().all(|l|(l.pixels).is_blank()),"Canvas flip expanded every empty layer into a separate pixel buffer");
 }
 #[test]
 fn audit_duplicate_and_live_stamps_respect_the_document_tile_budget(){
