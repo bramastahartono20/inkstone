@@ -75,14 +75,44 @@ pub extern "system" fn Java_art_inkstone_NativeBridge_save(env:JNIEnv,_this:JObj
 }
 #[no_mangle]
 pub extern "system" fn Java_art_inkstone_NativeBridge_load(env:JNIEnv,_this:JObject,id:jlong,bytes:JByteArray)->jstring {
-    if env.get_array_length(&bytes).unwrap_or(i32::MAX)>128*1024*1024 {return output(&env,error("Document is too large"));}
-    let result=match env.convert_byte_array(&bytes) {
-        Ok(bytes)=>match Engine::load(&bytes) {
-            Ok(mut e)=>{let mut guard=engines().lock().unwrap();if let Some(slot)=guard.get_mut(&id){
-                e.set_renderer(&slot.renderer_requested.clone()).ok();let info=e.info();*slot=e;info
-            }else{error("Engine is closed")}},
-            Err(e)=>error(e)
-        },Err(_)=>error("Could not read document")
+    if env.get_array_length(&bytes).unwrap_or(i32::MAX) as usize>crate::document_limit() {return output(&env,error("Document is too large"));}
+    let result=match env.convert_byte_array(&bytes) {Ok(bytes)=>replace_engine(id,&bytes),Err(_)=>error("Could not read document")};
+    output(&env,result)
+}
+fn replace_engine(id:jlong,bytes:&[u8])->Value{
+    match Engine::load(bytes) {
+        Ok(mut e)=>{let mut guard=engines().lock().unwrap();if let Some(slot)=guard.get_mut(&id){
+            e.set_renderer(&slot.renderer_requested.clone()).ok();let info=e.info();*slot=e;info
+        }else{error("Engine is closed")}},
+        Err(e)=>error(e)
+    }
+}
+/// Opens a document file without passing it through the Java heap.
+#[no_mangle]
+pub extern "system" fn Java_art_inkstone_NativeBridge_loadFile(mut env:JNIEnv,_this:JObject,id:jlong,path:JString)->jstring {
+    let path:String=match env.get_string(&path){Ok(v)=>v.into(),Err(_)=>return output(&env,error("Invalid document path"))};
+    let result=(||->Result<Vec<u8>,String>{
+        use std::io::Read;
+        let file=std::fs::File::open(&path).map_err(|e|e.to_string())?;
+        let limit=crate::document_limit() as u64;
+        if file.metadata().map_err(|e|e.to_string())?.len()>limit{return Err("Document is too large".into());}
+        let mut bytes=vec![];file.take(limit+1).read_to_end(&mut bytes).map_err(|e|e.to_string())?;Ok(bytes)
+    })();
+    output(&env,match result{Ok(bytes)=>replace_engine(id,&bytes),Err(e)=>error(e)})
+}
+/// Writes the binary document straight to `path` and syncs it, for the host to rename into place.
+#[no_mangle]
+pub extern "system" fn Java_art_inkstone_NativeBridge_saveToFile(mut env:JNIEnv,_this:JObject,id:jlong,path:JString)->jstring {
+    let path:String=match env.get_string(&path){Ok(v)=>v.into(),Err(_)=>return output(&env,error("Invalid document path"))};
+    let result=match engines().lock().unwrap().get_mut(&id) {
+        Some(e)=>(||->Result<Value,String>{
+            let file=std::fs::File::create(&path).map_err(|e|e.to_string())?;
+            let mut writer=std::io::BufWriter::with_capacity(1<<20,file);
+            e.save_compressed_to(&mut writer)?;
+            let file=writer.into_inner().map_err(|e|e.to_string())?;file.sync_all().map_err(|e|e.to_string())?;
+            Ok(json!({"ok":true}))
+        })().unwrap_or_else(error),
+        None=>error("Drawing engine is closed")
     };output(&env,result)
 }
 #[no_mangle]
@@ -130,7 +160,6 @@ pub extern "system" fn Java_art_inkstone_NativeBridge_renderPatch(env:JNIEnv,_th
 pub extern "system" fn Java_art_inkstone_NativeBridge_patchCapacity(_env:JNIEnv,_this:JObject,id:jlong,force:jboolean)->jint {
     let mut guard=engines().lock().unwrap();
     let Some(e)=guard.get_mut(&id) else{return 0;};
-    e.flush_gpu();
     e.patch_pixels(force!=0) as jint
 }
 
@@ -141,7 +170,6 @@ pub extern "system" fn Java_art_inkstone_NativeBridge_renderPatchInto(env:JNIEnv
     let capacity=env.get_array_length(&out).unwrap_or(0).max(0) as usize;
     let mut guard=engines().lock().unwrap();
     let Some(e)=guard.get_mut(&id) else{return std::ptr::null_mut();};
-    e.flush_gpu();
     let needed=e.patch_pixels(force!=0);
     if capacity<needed{
         let Ok(array)=env.new_int_array(2) else{return std::ptr::null_mut();};

@@ -73,7 +73,7 @@ impl Engine {
         if action == "add"
             && Self::layer_bytes(&self.state.layers)
                 + self.width * self.height
-                > PIXEL_BUDGET * 4
+                > crate::pixel_budget()
         {
             return Err("Layer mask exceeds the layer memory budget".into());
         }

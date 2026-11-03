@@ -19,6 +19,9 @@ object NativeBridge {
     external fun writePsd(handle: Long, path: String): String
     external fun save(handle: Long): ByteArray?
     external fun load(handle: Long, bytes: ByteArray): String
+    /** File-based save and open: large artwork never passes through the Java heap. */
+    external fun saveToFile(handle: Long, path: String): String
+    external fun loadFile(handle: Long, path: String): String
     external fun importPsd(handle:Long,path:String):String
     external fun importPixels(handle: Long, width: Int, height: Int, pixels: IntArray): String
     external fun transformSnapshot(handle:Long):IntArray?

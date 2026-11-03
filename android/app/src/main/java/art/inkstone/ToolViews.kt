@@ -99,7 +99,7 @@ class ToolIcon(context: Context, var symbol: String, private val action: () -> U
             "Share"->{p.style=Paint.Style.STROKE;c.drawRoundRect(-8f,-2f,8f,11f,1f,1f,p);c.drawLine(0f,4f,0f,-12f,p);c.drawLine(0f,-12f,-4f,-7f,p);c.drawLine(0f,-12f,4f,-7f,p)}
             "Video"->{val t=Path();t.moveTo(-7f,-10f);t.lineTo(12f,0f);t.lineTo(-7f,10f);t.close();c.drawPath(t,p)}
             "Prefs"->{c.drawRoundRect(-13f,-7f,13f,7f,7f,7f,p);p.color=0xff293238.toInt();c.drawCircle(5f,0f,5f,p)}
-            "Help"->{c.drawCircle(0f,0f,11f,p);p.color=0xff293238.toInt();p.textSize=18f;p.typeface=Typeface.DEFAULT_BOLD;p.textAlign=Paint.Align.CENTER;c.drawText("?",0f,6f,p)}
+            "Help"->{c.drawCircle(0f,0f,11f,p);p.color=if(light)Color.WHITE else 0xff293238.toInt();p.textSize=18f;p.typeface=Typeface.DEFAULT_BOLD;p.textAlign=Paint.Align.CENTER;c.drawText("?",0f,6f,p)}
             "Add"->{p.style=Paint.Style.STROKE;c.drawLine(-10f,0f,10f,0f,p);c.drawLine(0f,-10f,0f,10f,p)}
             "Close"->{p.style=Paint.Style.STROKE;c.drawLine(-7f,-7f,7f,7f,p);c.drawLine(7f,-7f,-7f,7f,p)}
             else->{p.textSize=16f;p.textAlign=Paint.Align.CENTER;c.drawText(symbol,0f,6f,p)}

@@ -24,7 +24,18 @@ mod psd_import;
 
 const MAX_PIXELS: usize = 16_777_216;
 const MAX_LAYERS:usize=4096;
-const PIXEL_BUDGET: usize = 67_108_864;
+/// Default layer memory budget in bytes; hosts raise it to suit the device with `memoryBudget`.
+const DEFAULT_PIXEL_BUDGET: usize = 256 * 1024 * 1024;
+const MIN_PIXEL_BUDGET: usize = 128 * 1024 * 1024;
+const MAX_PIXEL_BUDGET: usize = 4 * 1024 * 1024 * 1024;
+static PIXEL_BUDGET: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(DEFAULT_PIXEL_BUDGET);
+/// Bytes of layer pixels, masks and off-canvas tiles a document may hold.
+pub(crate) fn pixel_budget() -> usize { PIXEL_BUDGET.load(std::sync::atomic::Ordering::Relaxed) }
+/// Sets the layer memory budget for every canvas in this process, clamped to a safe range.
+/// Largest document file accepted when opening. Tile compression can leave noisy paint near its
+/// raw size, so the limit follows the layer budget.
+pub(crate) fn document_limit() -> usize { (pixel_budget() + 64 * 1024 * 1024).max(128 * 1024 * 1024) }
+pub fn set_pixel_budget(bytes: usize) { PIXEL_BUDGET.store(bytes.clamp(MIN_PIXEL_BUDGET, MAX_PIXEL_BUDGET), std::sync::atomic::Ordering::Relaxed); }
 const HISTORY_BUDGET: usize = 96 * 1024 * 1024;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -449,7 +460,6 @@ impl Engine {
             stroke.effects.mix=0.0;stroke.gpu_paint=brush.size>=32.0;
         }
 
-        if let Some(gpu)=&mut self.gpu { gpu.forget_layer(self.state.layers[stroke.layer].id); }
         if stroke.gpu_paint { if let Some(gpu)=&mut self.gpu { gpu.selection(self.selection.as_deref(),self.selection_alpha.as_deref()); } }
         if brush.fade_length==0.0 && time.is_none(){self.stamp(p, &mut stroke);}
         self.stroke = Some(stroke);
@@ -623,8 +633,11 @@ impl Engine {
         let x1 = ((p.x + radius + 1.0).ceil().max(0.0) as usize).min(self.width);
         let y1 = ((p.y + radius + 1.0).ceil().max(0.0) as usize).min(self.height);
         let crosses=p.x-radius<0.0 || p.y-radius<0.0 || p.x+radius>=self.width as f32 || p.y+radius>=self.height as f32;
-        if crosses && stroke.gpu_paint {self.flush_stroke(stroke);stroke.gpu_paint=false;}
+        // Smudge picks up off-canvas paint, which only the CPU holds, so it leaves the GPU at the edge.
+        if crosses && stroke.gpu_paint && (brush.kind==6 || brush.kind>=128) {self.flush_stroke(stroke);stroke.gpu_paint=false;}
+        let mut exterior_only=None;
         if self.gpu.is_some() && stroke.gpu_paint {
+            let seed=stroke.seed;
             let smudging=brush.kind==6 || brush.kind>=128;
             let initial=smudging && stroke.smudge.is_none();
             if initial { stroke.smudge=Some(Vec::new()); }
@@ -646,7 +659,11 @@ impl Engine {
                 flags:[brush.color,stroke.seed,self.selection.is_some() as u32,initial as u32],region:[0;4],palette,color_effect,direction:[stroke.direction[0],stroke.direction[1],stroke_path::deposition(brush,p),0.0],wet,contact,
             }});
             if !initial { stroke.seed=stroke.seed.wrapping_add(1); }
-            return;
+            let layer=&self.state.layers[stroke.layer];
+            if !crosses || self.selection.is_some() || layer.alpha_lock || layer.clipping {return;}
+            // The GPU paints the canvas part of an edge dab; the CPU below writes only its off-canvas
+            // pixels, with the same seed, into exterior storage.
+            exterior_only=Some(stroke.seed);stroke.seed=seed;
         }
         let mut exterior_count=if crosses{self.state.layers.iter().map(|l|l.exterior.len()).sum::<usize>()}else{0};
         let selected = &self.selection;
@@ -723,6 +740,7 @@ impl Engine {
         } else {
         for y in by0..by1 { for x in bx0..bx1 {
             let inside=x>=0 && y>=0 && x<self.width as i32 && y<self.height as i32;
+            if inside && exterior_only.is_some(){continue;}
             if !inside && (mask_edit || selected.is_some() || lock || layer.clipping){continue;}
             let idx=if inside{y as usize*self.width+x as usize}else{0};
             let under=pixels.as_ref().map_or(0,|values|values[idx]);
@@ -760,7 +778,8 @@ impl Engine {
         if let (Some(tip),Some(pickup))=(&mut stroke.smudge,pickup){
             for (carried,local) in tip.iter_mut().zip(pickup){*carried=mix_rgba(*carried,local,0.08);}
         }
-        stroke.seed = stroke.seed.wrapping_add(1);
+        stroke.seed = exterior_only.unwrap_or(stroke.seed.wrapping_add(1));
+        if exterior_only.is_some(){return;}
         if x0 < x1 && y0 < y1 {
             stroke.rect[0]=stroke.rect[0].min(x0);stroke.rect[1]=stroke.rect[1].min(y0);
             stroke.rect[2]=stroke.rect[2].max(x1);stroke.rect[3]=stroke.rect[3].max(y1);
@@ -892,13 +911,78 @@ impl Engine {
     }
 
     /// Pixels the next `render_patch(force)` will return, so hosts can size a reused buffer.
-    /// Call `flush_gpu` first; `render_patch` flushes pending GPU dabs before deciding its rect.
+    /// Pending GPU dabs count toward the patch without being flushed.
     pub fn patch_pixels(&self, force: bool) -> usize {
-        let rect = if force || self.dirty { Some([0, 0, self.width, self.height]) } else { self.damage };
+        let rect = if force || self.dirty { Some([0, 0, self.width, self.height]) } else {
+            match (self.damage, self.pending_rect()) {
+                (Some(mut r), Some(p)) => {for i in 0..2 {r[i]=r[i].min(p[i]);r[i+2]=r[i+2].max(p[i+2]);} Some(r)},
+                (r, p) => r.or(p),
+            }
+        };
         rect.map_or(0, |[x0, y0, x1, y1]| (x1 - x0) * (y1 - y0))
     }
 
+    /// Canvas area the pending GPU dabs cover, if any lands on the canvas.
+    fn pending_rect(&self)->Option<[usize;4]>{
+        let mut rect=[self.width,self.height,0,0];
+        for dab in &self.stroke.as_ref()?.pending {let r=dab.params.rect; if r[0]<r[2] && r[1]<r[3] {rect[0]=rect[0].min(r[0] as usize);rect[1]=rect[1].min(r[1] as usize);rect[2]=rect[2].max(r[2] as usize);rect[3]=rect[3].max(r[3] as usize);}}
+        (rect[0]<rect[2] && rect[1]<rect[3]).then_some(rect)
+    }
+
+    /// Whether a patch over `rect` may use the cached backdrop below the active layer, and whether
+    /// it composites on the GPU.
+    fn composite_route(&self,layers:&[Layer],rect:[usize;4],force:bool)->(Option<usize>,bool){
+        let [x0, y0, x1, y1] = rect;
+        let active_id=self.state.layers[self.state.active].id;
+        let group_clipping=!groups::clipping_groups(&self.state.groups,layers).is_empty();
+        let cache_at=layers.iter().position(|l|l.id==active_id).filter(|i|!layers.iter().any(|l|l.adjustment.is_some()) && *i>=2 && !layers[*i].clipping && !group_clipping
+            && !self.state.groups.iter().any(|g|g.blend!="Pass Through" || g.opacity<1.0)
+            && (x1-x0)*(y1-y0)<=2_097_152);
+        let prefer_cache=cache_at.is_some_and(|i|layers.len()-i<=4 && (x1-x0)*(y1-y0)<=262144);
+        // Cached backdrops avoid a second GPU round trip after painting the active layer.
+        let gpu=self.gpu.as_ref().is_some_and(|g|g.fits(layers)) && !layers.iter().any(|l|l.adjustment.is_some()) && !group_clipping && !prefer_cache && !layers.is_empty() && !self.state.groups.iter().any(|g|g.blend!="Pass Through" || g.opacity<1.0) && !self.state.layers.iter().any(|l|l.mask.is_some() && l.mask_enabled) && (force || (x1-x0)*(y1-y0)*layers.len()>=262144);
+        (cache_at,gpu)
+    }
+
+    /// Paints the pending GPU dabs and composites the patch in one GPU submission. Returns None
+    /// when the frame needs the separate paint and composite steps instead.
+    fn render_fused(&mut self,force:bool)->Option<([usize;4],Vec<u32>)>{
+        if self.gpu.is_none(){return None;}
+        let paint_rect=self.pending_rect()?;
+        let stroke=self.stroke.as_ref()?;
+        let rect=if force || self.dirty {[0,0,self.width,self.height]}else{
+            let mut r=self.damage.unwrap_or(paint_rect);
+            for i in 0..2 {r[i]=r[i].min(paint_rect[i]);r[i+2]=r[i+2].max(paint_rect[i+2]);}r
+        };
+        let layers=self.compositing_layers();
+        // A blank layer is left out of the composite, so its first dabs take the separate path.
+        let layer_id=self.state.layers[stroke.layer].id;
+        if stroke.layer!=self.state.active || !layers.iter().any(|l|l.id==layer_id) || !self.composite_route(&layers,rect,force).1 {return None;}
+        let mut stroke=self.stroke.take()?;
+        let pending=std::mem::take(&mut stroke.pending);
+        let smudging=stroke.brush.kind==6 || stroke.brush.kind>=128;
+        let bg=if self.state.background_visible {self.state.background}else{0};
+        let result=self.gpu.as_mut().unwrap().paint_and_composite(&mut self.state.layers[stroke.layer],&pending,paint_rect,smudging,&layers,self.width,rect,bg);
+        let out=match result {
+            Ok((tip,pixels))=>{
+                if smudging {stroke.smudge=tip;}
+                for i in 0..2 {stroke.rect[i]=stroke.rect[i].min(paint_rect[i]);stroke.rect[i+2]=stroke.rect[i+2].max(paint_rect[i+2]);}
+                Some((rect,pixels))
+            },
+            // Nothing was written back; the separate path retries the batch and falls back to the CPU.
+            Err(_)=>{stroke.pending=pending;None}
+        };
+        self.stroke=Some(stroke);out
+    }
+
     pub fn render_patch(&mut self, force: bool) -> Option<Vec<i32>> {
+        if let Some(([x0,y0,x1,y1],pixels))=self.render_fused(force){
+            let mut patch=Vec::with_capacity(4+pixels.len());
+            patch.extend([x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32]);
+            patch.extend(pixels.into_iter().map(|c|c as i32));
+            self.dirty = false; self.damage = None;
+            return Some(patch);
+        }
         self.flush_gpu();
         let rect = if force || self.dirty { [0, 0, self.width, self.height] }
             else { self.damage? };
@@ -906,14 +990,8 @@ impl Engine {
         let mut patch = Vec::with_capacity(4 + (x1 - x0) * (y1 - y0));
         patch.extend([x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32]);
         let layers=self.compositing_layers();
-        let active_id=self.state.layers[self.state.active].id;
-        let group_clipping=!groups::clipping_groups(&self.state.groups,&layers).is_empty();
-        let cache_at=layers.iter().position(|l|l.id==active_id).filter(|i|!layers.iter().any(|l|l.adjustment.is_some()) && *i>=2 && !layers[*i].clipping && !group_clipping
-            && !self.state.groups.iter().any(|g|g.blend!="Pass Through" || g.opacity<1.0)
-            && (x1-x0)*(y1-y0)<=2_097_152);
-        let prefer_cache=cache_at.is_some_and(|i|layers.len()-i<=4 && (x1-x0)*(y1-y0)<=262144);
-        // Cached backdrops avoid a second GPU round trip after painting the active layer.
-        let gpu_pixels=if !layers.iter().any(|l|l.adjustment.is_some()) && !group_clipping && !prefer_cache && !layers.is_empty() && !self.state.groups.iter().any(|g|g.blend!="Pass Through" || g.opacity<1.0) && !self.state.layers.iter().any(|l|l.mask.is_some() && l.mask_enabled) && (force || (x1-x0)*(y1-y0)*layers.len()>=262144) {
+        let (cache_at,use_gpu)=self.composite_route(&layers,rect,force);
+        let gpu_pixels=if use_gpu {
             self.gpu.as_mut().map(|gpu|gpu.composite(&layers,self.width,rect,if self.state.background_visible {self.state.background}else{0}))
         }else{None};
         match gpu_pixels {
@@ -937,7 +1015,7 @@ impl Engine {
         json!({"renderer":if self.gpu.is_some(){"gpu"}else{"cpu"},"rendererRequested":self.renderer_requested,
             "rendererDevice":self.gpu.as_ref().map(|g|g.description.as_str()),"rendererError":self.renderer_error,
             "gpuComposites":self.gpu.as_ref().map_or(0,|g|g.composites),
-            "gpuBatches":self.gpu.as_ref().map_or(0,|g|g.batches),"gpuDabs":self.gpu.as_ref().map_or(0,|g|g.dabs),
+            "gpuBatches":self.gpu.as_ref().map_or(0,|g|g.batches),"layerBytes":Self::layer_bytes(&self.state.layers),"memoryBudget":pixel_budget(),"gpuDabs":self.gpu.as_ref().map_or(0,|g|g.dabs),
             "width":self.width,"height":self.height,"active":self.state.active,"maskEditing":self.mask_edit && self.state.layers[self.state.active].mask.is_some(),"symmetry":self.symmetry,
             "historyNotice":self.history_notice,"undoAction":self.undo_names.last(),"redoAction":self.redo_names.last(),"inputError":self.input_error,"dpi":self.dpi,"undo":self.undo.len(),"redo":self.redo.len(),"background":self.state.background,
             "backgroundVisible":self.state.background_visible,"selection":self.selection.is_some(),"selectionVersion":self.selection_version,"savedSelections":self.saved_selections.keys().collect::<Vec<_>>(),"clipboard":self.clipboard.is_some(),
@@ -956,10 +1034,10 @@ impl Engine {
     fn ensure_edit_capacity(&self)->Result<(),String>{
         let active=&self.state.layers[self.state.active];
         let shared=self.state.layers.iter().enumerate().any(|(i,l)|i!=self.state.active && l.pixels.generation()==active.pixels.generation());
-        if shared && Self::layer_bytes(&self.state.layers)+self.width*self.height*4>PIXEL_BUDGET*4{return Err("Canvas memory is full. Merge painted layers or use a smaller canvas to continue drawing.".into());}
+        if shared && Self::layer_bytes(&self.state.layers)+self.width*self.height*4>pixel_budget(){return Err("Canvas memory is full. Merge painted layers or use a smaller canvas to continue drawing.".into());}
         Ok(())
     }
-    fn can_add(&self) -> bool { self.state.layers.len()<MAX_LAYERS && Self::layer_bytes(&self.state.layers)<=PIXEL_BUDGET*4 }
+    fn can_add(&self) -> bool { self.state.layers.len()<MAX_LAYERS && Self::layer_bytes(&self.state.layers)<=pixel_budget() }
 
 
     pub fn command(&mut self, v: &Value) -> Result<Value, String> {
@@ -1000,6 +1078,7 @@ impl Engine {
             "brushEffects"=>{self.brush_color=brush_color::BrushColor::parse(v)?;},
             "renderer" => {self.set_renderer(v["mode"].as_str().unwrap_or("auto"))?;},
             "info" => {},
+            "memoryBudget" => {set_pixel_budget(v["bytes"].as_u64().ok_or("Missing memory budget")? as usize);},
             "historyDirectory" => {let path=v["path"].as_str().ok_or("Missing history directory")?;std::fs::create_dir_all(path).map_err(|e|e.to_string())?;self.history_directory=path.into();},
             "undo" => { self.undo();if let Some(error)=self.history_error.take(){return Err(error);} }, "redo" => { self.redo();if let Some(error)=self.history_error.take(){return Err(error);} },
             "active" => { if index < self.state.layers.len() {if index!=self.state.active{self.mask_edit=false;} self.state.active = index; } },
@@ -1011,7 +1090,7 @@ impl Engine {
                 if self.state.layers.len()>=MAX_LAYERS{return Err("Layer metadata limit reached".into());}
                 if op=="duplicate" && index>=self.state.layers.len(){return Err("Layer no longer exists".into());}
                 if op=="duplicate" && self.state.layers.iter().map(|l|l.exterior.len()).sum::<usize>()+self.state.layers[index].exterior.len()>1024{return Err("Duplicate exceeds off-canvas storage capacity".into());}
-                if op=="add" && Self::layer_bytes(&self.state.layers)>PIXEL_BUDGET*4{return Err("Canvas memory budget is full".into());}
+                if op=="add" && Self::layer_bytes(&self.state.layers)>pixel_budget(){return Err("Canvas memory budget is full".into());}
                 if self.next_id==u32::MAX {return Err("Layer identifiers exhausted".into());}
                 let previous_dirty=self.dirty;
                 self.mask_edit=false;
@@ -1076,13 +1155,13 @@ impl Engine {
             }),
             "flipCanvas" => {
                 let horizontal=v["horizontal"].as_bool().unwrap_or(true);
-                if Self::layer_bytes(&self.state.layers)*2>PIXEL_BUDGET*4{return Err("Not enough canvas memory to flip this artwork".into());}
+                if Self::layer_bytes(&self.state.layers)*2>pixel_budget(){return Err("Not enough canvas memory to flip this artwork".into());}
                 let mut cache=std::collections::HashMap::new();let mut layers=Vec::new();let mut memory=Self::layer_bytes(&self.state.layers);
                 for l in &self.state.layers{
                     let key=(l.pixels.generation() as usize,l.mask.as_ref().map(|m|Arc::as_ptr(m) as usize),l.exterior.iter().map(|(k,v)|(*k,Arc::as_ptr(v) as usize)).collect::<Vec<_>>());
                     let geometry=if let Some(g)=cache.get(&key){Layer::clone(g)}else{
                         let extra=if l.adjustment.is_none() && (l.pixels).is_blank(){0}else{self.width*self.height*4}+l.mask.as_ref().map_or(0,|m|m.len())+(l.exterior.len()*4).min(256)*128*128*4;
-                        if memory+extra>PIXEL_BUDGET*4{return Err("Not enough canvas memory to flip this artwork".into());}memory+=extra;
+                        if memory+extra>pixel_budget(){return Err("Not enough canvas memory to flip this artwork".into());}memory+=extra;
                         let mapped=l.remapped(self.width,self.height,|x,y|if horizontal{(self.width as i32-1-x,y)}else{(x,self.height as i32-1-y)})?;cache.insert(key,mapped.clone());mapped
                     };
                     let mut layer=l.clone();layer.pixels=geometry.pixels;layer.mask=geometry.mask;layer.exterior=geometry.exterior;layers.push(layer);
@@ -1312,6 +1391,10 @@ impl Engine {
     pub fn save(&mut self)->Result<Vec<u8>,String>{let mut bytes=Vec::new();self.write_document(&mut bytes)?;Ok(bytes)}
     /// Native document format: binary tiles with incremental re-encoding (see binfmt).
     pub fn save_compressed(&mut self)->Result<Vec<u8>,String>{
+        let mut out=Vec::new();self.save_compressed_to(&mut out)?;Ok(out)
+    }
+    /// Writes the binary document layer by layer, so a large artwork never sits in memory whole.
+    pub fn save_compressed_to(&mut self,writer:&mut impl std::io::Write)->Result<(),String>{
         self.flush_gpu();
         let sources:Vec<Tiles>=self.state.layers.iter().map(|l|match &self.flood_preview{Some((index,before)) if self.state.layers[*index].id==l.id=>before.clone(),_=>l.pixels.clone()}).collect();
         let mut header=Vec::new();self.write_document_with(&mut header,true)?;
@@ -1321,8 +1404,10 @@ impl Engine {
             if pixels.is_blank(){out.push(0);continue;}
             if let Some(j)=sources[..i].iter().position(|p|p.generation()==pixels.generation()){out.push(2);out.extend_from_slice(&(j as u32).to_le_bytes());continue;}
             binfmt::encode_layer(&pixels.to_vec(),self.width,self.height,self.state.layers[i].id,&self.save_cache,&mut cache,&mut out);
+            writer.write_all(&out).map_err(|e|e.to_string())?;out.clear();
         }
-        self.save_cache=cache;Ok(out)
+        writer.write_all(&out).map_err(|e|e.to_string())?;
+        self.save_cache=cache;Ok(())
     }
     fn write_document(&mut self,writer:impl std::io::Write)->Result<(),String>{self.flush_gpu();self.write_document_with(writer,false)}
     fn write_document_with(&self,writer:impl std::io::Write,placeholder:bool)->Result<(),String> {
@@ -1334,9 +1419,9 @@ impl Engine {
         serde_json::to_writer(writer,&doc).map_err(|e|e.to_string())
     }
     pub fn load(bytes:&[u8])->Result<Self,String> {
-        if bytes.starts_with(&[0x1f,0x8b]){use std::io::Read;let mut decoded=Vec::new();flate2::read::GzDecoder::new(bytes).take(128*1024*1024+1).read_to_end(&mut decoded).map_err(|e|e.to_string())?;if decoded.len()>128*1024*1024{return Err("Document is too large".into());}if decoded.starts_with(&[0x1f,0x8b]){return Err("Invalid nested document".into());}return Self::load(&decoded);}
+        if bytes.starts_with(&[0x1f,0x8b]){use std::io::Read;let mut decoded=Vec::new();flate2::read::GzDecoder::new(bytes).take(document_limit() as u64+1).read_to_end(&mut decoded).map_err(|e|e.to_string())?;if decoded.len()>document_limit(){return Err("Document is too large".into());}if decoded.starts_with(&[0x1f,0x8b]){return Err("Invalid nested document".into());}return Self::load(&decoded);}
 
-        if bytes.len()>128*1024*1024 {return Err("Document is too large".into());}
+        if bytes.len()>document_limit() {return Err("Document is too large".into());}
         if bytes.starts_with(binfmt::MAGIC){
             let mut parsed=None;
             let (_,blobs)=binfmt::parse(bytes,|header|{let doc:SavedDocument=serde_json::from_slice(header).map_err(|_|"This is not a supported Inkstone document")?;let dims=(doc.width,doc.height,doc.layers.len());parsed=Some(doc);Ok(dims)})?;
@@ -1363,7 +1448,7 @@ impl Engine {
                 binfmt::Blob::Empty=>Tiles::blank(doc.width,doc.height),
                 binfmt::Blob::Alias(j)=>layers.get(*j).map(|l:&Layer|l.pixels.clone()).ok_or("Invalid layer reference")?,
                 binfmt::Blob::Tiles(tiles)=>{
-                    if Self::layer_bytes(&layers)>PIXEL_BUDGET*4{return Err("Artwork exceeds the layer memory budget".into());}
+                    if Self::layer_bytes(&layers)>pixel_budget(){return Err("Artwork exceeds the layer memory budget".into());}
                     let pixels=binfmt::decode_layer(tiles,doc.width,doc.height,l.id,&mut save_cache)?;
                     Tiles::from_flat(&pixels,doc.width,doc.height)
                 }
@@ -1371,7 +1456,7 @@ impl Engine {
                 if l.runs.iter().any(|r|r.0==0) || l.runs.iter().map(|r|r.0 as usize).sum::<usize>()!=doc.width*doc.height{return Err("Invalid empty layer".into());}
                 Tiles::blank(doc.width,doc.height)
             }else if let Some(pixels)=pixel_cache.get(&l.runs){pixels.clone()}else{
-                if Self::layer_bytes(&layers)>PIXEL_BUDGET*4{return Err("Artwork exceeds the layer memory budget".into());}
+                if Self::layer_bytes(&layers)>pixel_budget(){return Err("Artwork exceeds the layer memory budget".into());}
                 let pixels=Tiles::from_flat(&decode_runs(&l.runs,doc.width*doc.height)?,doc.width,doc.height);
                 pixel_cache.insert(l.runs.clone(),pixels.clone());pixels
             };
@@ -1379,7 +1464,7 @@ impl Engine {
                 blend:l.blend,alpha_lock:l.alpha_lock,locked:l.locked,clipping:l.clipping,mask_enabled:l.mask_enabled,mask:match l.mask{Some(runs)=>Some(Arc::new(decode_mask_runs(&runs,doc.width*doc.height)?)),None=>None},pixels});
         }
         if layers.iter().map(|l|l.exterior.len()).sum::<usize>()>1024{return Err("Off-canvas storage exceeds document budget".into());}
-        if Self::layer_bytes(&layers)>PIXEL_BUDGET*4{return Err("Document masks exceed the layer memory budget".into());}
+        if Self::layer_bytes(&layers)>pixel_budget(){return Err("Document masks exceed the layer memory budget".into());}
         if doc.selections.values().map(|r|r.len()*8).sum::<usize>()>32*1024*1024{return Err("Saved selections exceed document budget".into());}
         for runs in doc.selections.values(){validate_runs(runs,doc.width*doc.height,255)?;}
         e.saved_selections=doc.selections;
@@ -1498,7 +1583,7 @@ impl SavedDocument{
             if let Some(mask)=&layer.mask{validate_runs(mask,count,255)?;bytes=bytes.checked_add(count).ok_or("Document memory budget exceeded")?;}
             tiles+=layer.exterior.len();if layer.exterior.len()>256 || tiles>1024{return Err("Off-canvas storage exceeds document budget".into());}
             bytes=bytes.checked_add(layer.exterior.len()*128*128*4).ok_or("Document memory budget exceeded")?;
-            if bytes>PIXEL_BUDGET*4{return Err("Document exceeds decode memory budget".into());}
+            if bytes>pixel_budget(){return Err("Document exceeds decode memory budget".into());}
         }Ok(())
     }
 }

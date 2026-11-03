@@ -325,7 +325,7 @@ impl Engine {
                             0
                         };
                     if !record.own_background
-                        && (allocated + estimate > PIXEL_BUDGET * 4 || layers.len() >= 64)
+                        && (allocated + estimate > crate::pixel_budget() || layers.len() >= 64)
                     {
                         return Err("PSD exceeds the layer memory budget".into());
                     }
@@ -415,7 +415,7 @@ impl Engine {
                         continue;
                     }
                     allocated += size * 4 + mask.as_ref().map_or(0, |m| m.len());
-                    if allocated > PIXEL_BUDGET * 4 || layers.len() >= 64 {
+                    if allocated > crate::pixel_budget() || layers.len() >= 64 {
                         return Err("PSD exceeds the layer memory budget".into());
                     }
                     let id = layers.len() as u32 + 1;

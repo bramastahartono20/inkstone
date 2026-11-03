@@ -691,10 +691,14 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                 for(g in ancestors){if(hidden)break;if(seenGroups.add(g.getLong("id")))header(g);hidden=g.optBoolean("collapsed")}
                 if(hidden)continue
                 val layerRow=LinearLayout(activity).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(5),dp(5),dp(8),dp(5));background=rounded(if(i==active && selectedLayerGroup==null)blue else 0x443d3d3d,StudioShape.CORNER_DP);isClickable=true;isFocusable=true}
-                if(layer.optBoolean("clipping"))layerRow.addView(text("↳",22f).apply{gravity=Gravity.CENTER;contentDescription="Clipping Mask enabled for $name";tooltipText="Clipping Mask enabled"},LinearLayout.LayoutParams(dp(24),dp(48)))
+                if(layer.optBoolean("clipping"))layerRow.addView(ClipArrow(activity,theme.text).apply{contentDescription="Clipping Mask enabled for $name";tooltipText="Clipping Mask enabled"},LinearLayout.LayoutParams(dp(24),dp(48)))
                 val thumbnail=FrameLayout(activity).apply{background=rounded(0x336e777c,StudioShape.CORNER_DP);clipToOutline=true}
-                thumbnail.addView(ImageView(activity).apply{scaleType=ImageView.ScaleType.FIT_CENTER;setImageBitmap(session.layerThumbnails.getOrNull(i))},LayoutParams(-1,-1));layerRow.addView(thumbnail,LinearLayout.LayoutParams(dp(56),dp(56)))
-                layerRow.addView(text(name+(if(layer.optBoolean("locked"))" · Locked" else "")+(if(layer.optBoolean("hasMask"))" · Mask" else "")+(if(layer.optBoolean("alphaLock"))" · α Lock" else ""),16f),LinearLayout.LayoutParams(0,-1,1f))
+                val adjustment=layer.optJSONArray("adjustment")?.optString(0)
+                thumbnail.addView(ImageView(activity).apply{scaleType=ImageView.ScaleType.FIT_CENTER;setImageBitmap(session.layerThumbnails.getOrNull(i))},LayoutParams(-1,-1))
+                // An adjustment layer holds no pixels, so its thumbnail would be empty.
+                if(adjustment!=null)thumbnail.addView(text("◐",26f).apply{gravity=Gravity.CENTER;contentDescription="$adjustment adjustment"},LayoutParams(-1,-1))
+                layerRow.addView(thumbnail,LinearLayout.LayoutParams(dp(56),dp(56)))
+                layerRow.addView(text(name+(if(adjustment!=null)" · $adjustment" else "")+(if(layer.optBoolean("locked"))" · Locked" else "")+(if(layer.optBoolean("hasMask"))" · Mask" else "")+(if(layer.optBoolean("alphaLock"))" · α Lock" else ""),16f),LinearLayout.LayoutParams(0,-1,1f))
                 if(layer.optBoolean("hasMask"))layerRow.addView(text(if(i==active && session.info.optBoolean("maskEditing"))"[M]"else"M",14f).apply{gravity=Gravity.CENTER;isClickable=true;contentDescription="Edit mask for $name";tooltipText="Edit layer mask";setOnClickListener{session.command("active",JSONObject().put("index",i)){maskAction("edit")}}},LinearLayout.LayoutParams(dp(40),dp(48)))
                 val dropdown=LinearLayout(activity).apply{orientation=LinearLayout.VERTICAL;visibility=GONE;setPadding(dp(8),dp(10),dp(8),dp(12));background=rounded(0x33373737,StudioShape.CORNER_DP)}
                 expanded.add(dropdown)
@@ -882,6 +886,10 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                 body.addView(row("Layer group"){chooseLayerGroup(index)})
                 body.addView(row("Rename"){activity.textDialog("Layer name",l.getString("name")){name->session.command("layer",JSONObject().put("name",name)){rebuildPanel(::layers);activity.scheduleSave()}}})
                 slider(body,"Opacity",l.getDouble("opacity").toFloat()){value->session.command("layer",JSONObject().put("opacity",value));activity.scheduleSave()}
+                l.optJSONArray("adjustment")?.let{adjustment->
+                    val kind=adjustment.optString(0);val amount=adjustment.optDouble(1,0.0).toFloat();val strength=kind in listOf("Invert","Grayscale")
+                    slider(body,kind,if(strength)amount else (amount+1)/2){value->session.command("layer",JSONObject().put("adjustmentKind",kind).put("amount",if(strength)value else (value-.5f)*2));activity.scheduleSave()}
+                }
                 body.addView(row("Blend Mode",l.getString("blend")){
                     val modes=arrayOf("Normal","Multiply","Screen","Overlay","Add","Darken","Lighten","Difference")
                     AlertDialog.Builder(activity).setTitle("Blend Mode").setSingleChoiceItems(modes,modes.indexOf(l.getString("blend"))){dialog,which->session.command("layer",JSONObject().put("blend",modes[which])){rebuildPanel(::layers);activity.scheduleSave()};dialog.dismiss()}.setNegativeButton("Cancel",null).show()
@@ -1122,16 +1130,15 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
             body.addView(row("Liquify"){dismissPanel();session.tool="Liquify";canvas.liquify.begin();refreshTools();activity.deferAutosave();showNotice("Liquify · drag to deform, Done to apply")})
             for(kind in listOf("Brightness","Saturation","Blur","Grayscale","Invert"))body.addView(row(kind){
                 if(!adjustAsLayer || kind=="Blur")adjustmentSlider(kind)else{
-                    val current=session.info.getJSONArray("layers").getJSONObject(session.info.getInt("active"))
                     fun edit(){rebuildPanel{panel("Adjustment",kind,250,left=true){controls->
                         controls.addView(row("← Back to Adjustments"){rebuildPanel(::adjustments)})
                         val existing=session.info.getJSONArray("layers").getJSONObject(session.info.getInt("active")).optJSONArray("adjustment")
                         val prior=existing?.takeIf{it.optString(0)==kind}?.optDouble(1,0.0)?.toFloat()?:if(kind in listOf("Invert","Grayscale"))1f else 0f
                         slider(controls,kind,if(kind in listOf("Invert","Grayscale"))prior else (prior+1)/2){value->session.command("layer",JSONObject().put("adjustmentKind",kind).put("amount",if(kind in listOf("Invert","Grayscale"))value else (value-.5f)*2));activity.scheduleSave()}
                     }}}
-                    // Reuse the active adjustment layer only for the same kind; otherwise add a new one.
+                    // Each pick adds a new numbered layer; Layer Options edits an existing one.
                     // Invert/Grayscale start at full strength so the new layer has a visible effect.
-                    if(current.optJSONArray("adjustment")?.optString(0)==kind)edit()else session.command("add"){r->if(!r.has("error"))session.command("layer",JSONObject().put("name","$kind adjustment").put("adjustmentKind",kind).put("amount",if(kind in listOf("Invert","Grayscale"))1 else 0)){edit()}}
+                    session.command("add"){r->if(!r.has("error"))session.command("layer",JSONObject().put("name",nextAdjustmentName()).put("adjustmentKind",kind).put("amount",if(kind in listOf("Invert","Grayscale"))1 else 0)){edit()}}
                 }
             })
         }
@@ -1139,6 +1146,13 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
     private fun liquifySlider(size:Boolean){
         val l=canvas.liquify;val seek=SeekBar(activity).apply{max=if(size)592 else 99;progress=if(size)(l.size-8).toInt()else(l.strength*100).toInt()-1;contentDescription=if(size)"Liquify size"else"Liquify strength"}
         AlertDialog.Builder(activity).setTitle(if(size)"Liquify size"else"Liquify strength").setView(seek).setPositiveButton("Apply"){_,_->if(size)l.size=seek.progress+8f else l.strength=(seek.progress+1)/100f;updateBottom()}.setNegativeButton("Cancel",null).show()
+    }
+    /** "Adjustment Layer N", one past the highest number already in the document. */
+    private fun nextAdjustmentName():String{
+        val pattern=Regex("Adjustment Layer (\\d+)")
+        val layers=session.info.getJSONArray("layers")
+        val highest=(0 until layers.length()).maxOfOrNull{pattern.matchEntire(layers.getJSONObject(it).optString("name"))?.groupValues?.get(1)?.toIntOrNull()?:0}?:0
+        return "Adjustment Layer ${highest+1}"
     }
     private fun adjustmentSlider(kind:String){
         rebuildPanel{
@@ -1160,4 +1174,18 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
     }
     override fun onDetachedFromWindow(){colorDrop?.cancel();canvas.cancelFillAnimation();super.onDetachedFromWindow()}
 
+}
+
+/** Bent arrow beside a clipped layer, pointing down to the layer it clips to. Drawn, not a font
+ *  glyph, because "↳" is missing from some device fonts. */
+private class ClipArrow(context:android.content.Context,color:Int):View(context){
+    private val stroke=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{this.color=color;style=android.graphics.Paint.Style.STROKE;strokeCap=android.graphics.Paint.Cap.ROUND;strokeJoin=android.graphics.Paint.Join.ROUND}
+    private val path=android.graphics.Path()
+    override fun onDraw(canvas:android.graphics.Canvas){
+        val d=resources.displayMetrics.density;stroke.strokeWidth=2f*d
+        val x0=width*.3f;val x1=width*.72f;val top=height*.22f;val bottom=height*.8f;val head=4.5f*d
+        path.rewind();path.moveTo(x0,top);path.lineTo(x0,height*.5f);path.lineTo(x1,height*.5f);path.lineTo(x1,bottom)
+        path.moveTo(x1-head,bottom-head);path.lineTo(x1,bottom);path.lineTo(x1+head,bottom-head)
+        canvas.drawPath(path,stroke)
+    }
 }

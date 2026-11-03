@@ -6,9 +6,11 @@ use std::{
     time::Duration,
 };
 
-// Hold every layer the canvas budget allows (PIXEL_BUDGET is in bytes after the *4) plus headroom
-// for one transient layer. A smaller cache evicts and re-uploads the whole stack on every frame.
-const CACHE_BYTES: usize = crate::PIXEL_BUDGET * 4 + 64 * 1024 * 1024;
+// Hold every layer the canvas budget allows plus headroom for one transient layer. A smaller
+// cache evicts and re-uploads the whole stack on every frame.
+fn cache_bytes() -> usize {
+    crate::pixel_budget() + 64 * 1024 * 1024
+}
 pub const MAX_DABS: usize = 128;
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -242,9 +244,12 @@ impl Gpu {
             mapped_at_creation: false,
         })
     }
-    /// Drops the resident copy of a layer; the next composite or paint uploads its CPU pixels again.
-    pub fn forget_layer(&mut self, id: u32) {
-        self.layers.remove(&id);
+    /// Whether every layer of `layers` can stay resident at once. Resident layers are full-size
+    /// even when the CPU copy is sparse, so a larger stack would evict and re-upload every frame.
+    pub fn fits(&self, layers: &[Layer]) -> bool {
+        let mut ids = std::collections::HashSet::new();
+        let size = layers.first().map_or(0, |l| l.pixels.len() * 4);
+        layers.iter().filter(|l| ids.insert(l.id)).count() * size <= cache_bytes()
     }
 
     pub fn selection(&mut self, selection: Option<&[bool]>, alpha:Option<&[u8]>) {
@@ -266,7 +271,7 @@ impl Gpu {
         }
         self.tick += 1;
         if !self.layers.contains_key(&layer.id) {
-            while (self.layers.len() + 1) * size > CACHE_BYTES {
+            while (self.layers.len() + 1) * size > cache_bytes() {
                 let oldest = self
                     .layers
                     .iter()
@@ -314,18 +319,51 @@ impl Gpu {
         rect: [usize; 4],
         smudging: bool,
     ) -> Result<Option<Vec<u32>>, String> {
-        self.device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
-        self.device.push_error_scope(wgpu::ErrorFilter::Validation);
-        let result = self.paint_inner(layer, dabs, rect, smudging);
-        let validation = pollster::block_on(self.device.pop_error_scope());
-        let allocation = pollster::block_on(self.device.pop_error_scope());
-        if let Some(e) = validation.or(allocation) {
-            return Err(format!("GPU paint: {e}"));
-        }
-        if let Some(e) = self.asynchronous_error.lock().unwrap().take() {
-            return Err(e);
-        }
-        let (values, tip) = result?;
+        let result = self.scoped("GPU paint", |gpu| {
+            let mut encoder = gpu.device.create_command_encoder(&Default::default());
+            let readback = gpu.encode_paint(&mut encoder, layer, dabs, rect, smudging)?;
+            let submission = gpu.queue.submit([encoder.finish()]);
+            gpu.wait(submission, &[&readback])?;
+            Ok(Self::read_paint(&readback, rect, smudging))
+        })?;
+        Ok(self.apply_paint(layer, dabs, rect, result))
+    }
+    /// Paints a dab batch and composites the canvas in one submission, so a frame waits for the
+    /// GPU once instead of twice. `layers` are taken before painting; the painted layer's resident
+    /// buffer already holds the new dabs when the composite reads it.
+    #[allow(clippy::too_many_arguments)]
+    pub fn paint_and_composite(
+        &mut self,
+        layer: &mut Layer,
+        dabs: &[Dab],
+        paint_rect: [usize; 4],
+        smudging: bool,
+        layers: &[Layer],
+        width: usize,
+        rect: [usize; 4],
+        background: u32,
+    ) -> Result<(Option<Vec<u32>>, Vec<u32>), String> {
+        let (paint, pixels) = self.scoped("GPU frame", |gpu| {
+            let mut encoder = gpu.device.create_command_encoder(&Default::default());
+            let paint = gpu.encode_paint(&mut encoder, layer, dabs, paint_rect, smudging)?;
+            let composite = gpu.encode_composite(&mut encoder, layers, width, rect, background)?;
+            let submission = gpu.queue.submit([encoder.finish()]);
+            gpu.wait(submission, &[&paint, &composite])?;
+            Ok((
+                Self::read_paint(&paint, paint_rect, smudging),
+                Self::read_composite(&composite),
+            ))
+        })?;
+        self.composites += 1;
+        Ok((self.apply_paint(layer, dabs, paint_rect, paint), pixels))
+    }
+    fn apply_paint(
+        &mut self,
+        layer: &mut Layer,
+        dabs: &[Dab],
+        rect: [usize; 4],
+        (values, tip): (Vec<u32>, Option<Vec<u32>>),
+    ) -> Option<Vec<u32>> {
         let [x, y, x1, y1] = rect;
         let w = x1 - x;
         for row in 0..y1 - y {
@@ -334,15 +372,88 @@ impl Gpu {
         self.layers.get_mut(&layer.id).unwrap().source = Some(layer.pixels.generation());
         self.batches += 1;
         self.dabs += dabs.len() as u64;
-        Ok(tip)
+        tip
     }
-    fn paint_inner(
+    /// Runs `body` inside validation and out-of-memory error scopes.
+    fn scoped<T>(
         &mut self,
+        label: &str,
+        body: impl FnOnce(&mut Self) -> Result<T, String>,
+    ) -> Result<T, String> {
+        self.device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
+        self.device.push_error_scope(wgpu::ErrorFilter::Validation);
+        let result = body(self);
+        let validation = pollster::block_on(self.device.pop_error_scope());
+        let allocation = pollster::block_on(self.device.pop_error_scope());
+        if let Some(e) = validation.or(allocation) {
+            return Err(format!("{label}: {e}"));
+        }
+        if let Some(e) = self.asynchronous_error.lock().unwrap().take() {
+            return Err(e);
+        }
+        result
+    }
+    /// Blocks until `submission` finishes and every readback buffer is mapped.
+    fn wait(
+        &self,
+        submission: wgpu::SubmissionIndex,
+        readbacks: &[&wgpu::Buffer],
+    ) -> Result<(), String> {
+        let (tx, rx) = std::sync::mpsc::sync_channel(readbacks.len());
+        for readback in readbacks {
+            let tx = tx.clone();
+            readback.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+                let _ = tx.send(r);
+            });
+        }
+        self.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: Some(submission),
+                timeout: Some(Duration::from_secs(10)),
+            })
+            .map_err(|e| format!("GPU wait: {e}"))?;
+        for _ in readbacks {
+            rx.recv_timeout(Duration::from_secs(1))
+                .map_err(|e| format!("GPU readback: {e}"))?
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+    fn read_paint(
+        readback: &wgpu::Buffer,
+        rect: [usize; 4],
+        smudging: bool,
+    ) -> (Vec<u32>, Option<Vec<u32>>) {
+        let [x, y, x1, y1] = rect;
+        let pixels = (x1 - x) * (y1 - y);
+        let mapped = readback.slice(..).get_mapped_range();
+        let values: &[u32] = bytemuck::cast_slice(&mapped);
+        let tip = if smudging {
+            Some(values[pixels..].to_vec())
+        } else {
+            None
+        };
+        let out = values[..pixels].to_vec();
+        drop(mapped);
+        readback.unmap();
+        (out, tip)
+    }
+    fn read_composite(readback: &wgpu::Buffer) -> Vec<u32> {
+        let mapped = readback.slice(..).get_mapped_range();
+        let words: &[u32] = bytemuck::cast_slice(&mapped);
+        let out = words.chunks_exact(2).map(|v| v[0]).collect();
+        drop(mapped);
+        readback.unmap();
+        out
+    }
+    fn encode_paint(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
         layer: &Layer,
         dabs: &[Dab],
         rect: [usize; 4],
         smudging: bool,
-    ) -> Result<(Vec<u32>, Option<Vec<u32>>), String> {
+    ) -> Result<wgpu::Buffer, String> {
         self.sync_layer(layer)?;
         let [x, y, x1, y1] = rect;
         let w = x1 - x;
@@ -409,17 +520,16 @@ impl Gpu {
             layout: &self.layout,
             entries: &entries,
         });
-        let mut encoder = self.device.create_command_encoder(&Default::default());
         for (i, dab) in dabs.iter().enumerate() {
             let offset = (i * stride) as u32;
             if smudging {
-                Self::dispatch(&mut encoder, &self.pickup, &group, offset, 4, 4);
+                Self::dispatch(encoder, &self.pickup, &group, offset, 4, 4);
             }
             if !smudging || dab.params.flags[3] == 0 {
                 let r = dab.params.rect;
                 if r[2] > r[0] && r[3] > r[1] {
                     Self::dispatch(
-                        &mut encoder,
+                        encoder,
                         &self.paint,
                         &group,
                         offset,
@@ -428,12 +538,12 @@ impl Gpu {
                     );
                 }
                 if smudging {
-                    Self::dispatch(&mut encoder, &self.advance, &group, offset, 4, 4);
+                    Self::dispatch(encoder, &self.advance, &group, offset, 4, 4);
                 }
             }
         }
         Self::dispatch(
-            &mut encoder,
+            encoder,
             &self.gather,
             &group,
             (dabs.len() * stride) as u32,
@@ -444,31 +554,7 @@ impl Gpu {
         if smudging {
             encoder.copy_buffer_to_buffer(&self.tip, 0, &readback, bytes, 4096);
         }
-        let submission = self.queue.submit([encoder.finish()]);
-        let (tx, rx) = std::sync::mpsc::sync_channel(1);
-        readback.slice(..).map_async(wgpu::MapMode::Read, move |r| {
-            let _ = tx.send(r);
-        });
-        self.device
-            .poll(wgpu::PollType::Wait {
-                submission_index: Some(submission),
-                timeout: Some(Duration::from_secs(10)),
-            })
-            .map_err(|e| format!("GPU wait: {e}"))?;
-        rx.recv_timeout(Duration::from_secs(1))
-            .map_err(|e| format!("GPU readback: {e}"))?
-            .map_err(|e| e.to_string())?;
-        let mapped = readback.slice(..).get_mapped_range();
-        let values: &[u32] = bytemuck::cast_slice(&mapped);
-        let tip = if smudging {
-            Some(values[w * h..].to_vec())
-        } else {
-            None
-        };
-        let pixels = values[..w * h].to_vec();
-        drop(mapped);
-        readback.unmap();
-        Ok((pixels, tip))
+        Ok(readback)
     }
     pub fn composite(
         &mut self,
@@ -477,26 +563,24 @@ impl Gpu {
         rect: [usize; 4],
         background: u32,
     ) -> Result<Vec<u32>, String> {
-        self.device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
-        self.device.push_error_scope(wgpu::ErrorFilter::Validation);
-        let result = self.composite_inner(layers, width, rect, background);
-        let validation = pollster::block_on(self.device.pop_error_scope());
-        let allocation = pollster::block_on(self.device.pop_error_scope());
-        if let Some(e) = validation.or(allocation) {
-            return Err(format!("GPU composite: {e}"));
-        }
-        if let Some(e) = self.asynchronous_error.lock().unwrap().take() {
-            return Err(e);
-        }
-        result
+        let out = self.scoped("GPU composite", |gpu| {
+            let mut encoder = gpu.device.create_command_encoder(&Default::default());
+            let readback = gpu.encode_composite(&mut encoder, layers, width, rect, background)?;
+            let submission = gpu.queue.submit([encoder.finish()]);
+            gpu.wait(submission, &[&readback])?;
+            Ok(Self::read_composite(&readback))
+        })?;
+        self.composites += 1;
+        Ok(out)
     }
-    fn composite_inner(
+    fn encode_composite(
         &mut self,
+        encoder: &mut wgpu::CommandEncoder,
         layers: &[Layer],
         width: usize,
         rect: [usize; 4],
         background: u32,
-    ) -> Result<Vec<u32>, String> {
+    ) -> Result<wgpu::Buffer, String> {
         let [x, y, x1, y1] = rect;
         let w = x1 - x;
         let h = y1 - y;
@@ -567,7 +651,6 @@ impl Gpu {
             "Layer settings",
             wgpu::BufferUsages::UNIFORM,
         );
-        let mut encoder = self.device.create_command_encoder(&Default::default());
         for (i, layer) in layers.iter().enumerate() {
             self.sync_layer(layer)?;
             let group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -593,7 +676,7 @@ impl Gpu {
                 ],
             });
             Self::dispatch(
-                &mut encoder,
+                encoder,
                 &self.composite,
                 &group,
                 (i * stride) as u32,
@@ -602,27 +685,7 @@ impl Gpu {
             );
         }
         encoder.copy_buffer_to_buffer(&work, 0, &readback, 0, bytes);
-        let submission = self.queue.submit([encoder.finish()]);
-        let (tx, rx) = std::sync::mpsc::sync_channel(1);
-        readback.slice(..).map_async(wgpu::MapMode::Read, move |r| {
-            let _ = tx.send(r);
-        });
-        self.device
-            .poll(wgpu::PollType::Wait {
-                submission_index: Some(submission),
-                timeout: Some(Duration::from_secs(10)),
-            })
-            .map_err(|e| e.to_string())?;
-        rx.recv_timeout(Duration::from_secs(1))
-            .map_err(|e| e.to_string())?
-            .map_err(|e| e.to_string())?;
-        let mapped = readback.slice(..).get_mapped_range();
-        let words: &[u32] = bytemuck::cast_slice(&mapped);
-        let out = words.chunks_exact(2).map(|v| v[0]).collect();
-        drop(mapped);
-        readback.unmap();
-        self.composites += 1;
-        Ok(out)
+        Ok(readback)
     }
     fn dispatch(
         encoder: &mut wgpu::CommandEncoder,

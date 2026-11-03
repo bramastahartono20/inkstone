@@ -537,3 +537,96 @@ fn physical_gpu_paint_mixing_matches_cpu(){
         assert!(total/(192.*128.*4.)<0.5 && worst<=6,"Mixing mismatch pickup {pickup} wetness {wetness} kind {kind}: mean {} worst {worst}",total/(192.*128.*4.));
     }}
 }
+
+#[test]
+#[ignore = "Requires a physical Metal or Vulkan adapter"]
+fn physical_gpu_fused_frame_matches_separate_steps(){
+    // The active layer sits under many others, so each frame paints and composites on the GPU.
+    for kind in [0u8,8,128]{
+        let mut fused=gpu_engine(640,400);let mut separate=gpu_engine(640,400);
+        for e in [&mut fused,&mut separate]{
+            for i in 0..14{
+                if i>0{e.command(&json!({"op":"add"})).unwrap();}
+                e.begin(Sample{x:320.,y:200.,pressure:1.,tilt:0.},Brush{size:700.,opacity:0.2,color:0xff376ac5^(i*0x0a1b2c),..Brush::default()});e.end();
+            }
+            e.command(&json!({"op":"active","index":1})).unwrap();
+            e.render_patch(true);
+            e.begin(Sample{x:80.,y:200.,pressure:1.,tilt:0.},Brush{kind,size:120.,color:0xffd65a20,stabilization:0.,..Brush::default()});
+        }
+        let mut frames=0;
+        for i in 1..=24{
+            let p=Sample{x:80.+i as f32*20.,y:200.+(i as f32*0.4).sin()*60.,pressure:0.8,tilt:0.};
+            fused.sample(p);separate.sample(p);
+            if i%2==0{
+                separate.flush_gpu();
+                let Some(([x0,y0,x1,y1],pixels))=fused.render_fused(false) else{continue};
+                frames+=1;
+                let worst=(y0..y1).flat_map(|y|(x0..x1).map(move|x|(x,y))).zip(&pixels).map(|((x,y),a)|{let b=fused.color_at(x,y,true);[0,8,16,24].map(|s|((*a>>s&255)as i32-(b>>s&255)as i32).abs()).into_iter().max().unwrap()}).max().unwrap();
+                assert!(worst<=4,"Fused composite differs from the CPU by {worst} for kind {kind}");
+            }
+        }
+        assert!(frames>=8,"Only {frames} frames took the fused path for kind {kind}");
+        fused.end();separate.end();
+        assert!(fused.state.layers[1].pixels.to_vec()==separate.state.layers[1].pixels.to_vec(),"Fused painting changed the layer for kind {kind}");
+        assert!(fused.undo() && separate.undo());
+        assert!(fused.state.layers[1].pixels.to_vec()==separate.state.layers[1].pixels.to_vec(),"Undo after a fused stroke differs for kind {kind}");
+    }
+}
+
+#[test]
+#[ignore = "Requires a physical Metal or Vulkan adapter"]
+fn physical_gpu_patches_rebuild_the_canvas(){
+    // Applies every patch to a display copy, as the Android host does, then compares it with a
+    // fresh full render: stale patches show up as squares on the canvas.
+    let (w,h)=(900usize,640usize);
+    for (active,kind,mix) in [(2usize,0u8,0.0f32),(0,0,0.0),(2,8,0.6),(0,128,0.0),(2,2,0.0)]{
+        let mut e=gpu_engine(w,h);
+        for i in 0..6{if i>0{e.command(&json!({"op":"add"})).unwrap();}
+            e.begin(Sample{x:450.,y:320.,pressure:1.,tilt:0.},Brush{size:500.,opacity:0.3,color:0xff376ac5^(i*0x0a1b2c),..Brush::default()});e.end();}
+        e.command(&json!({"op":"active","index":active})).unwrap();
+        e.command(&json!({"op":"brushEffects","mix":mix,"pickup":mix,"wetness":mix})).unwrap();
+        let mut display=vec![0u32;w*h];
+        let mut apply=|e:&mut Engine,force:bool|{let needed=e.patch_pixels(force);if let Some(p)=e.render_patch(force){assert_eq!(p.len()-4,needed,"Patch size prediction");let (x0,y0,pw,ph)=(p[0] as usize,p[1] as usize,p[2] as usize,p[3] as usize);
+            for y in 0..ph{for x in 0..pw{display[(y0+y)*w+x0+x]=p[4+y*pw+x] as u32;}}}};
+        apply(&mut e,true);
+        for s in 0..12{
+            let y=60.+s as f32*45.;
+            e.begin_timed(Sample{x:-40.,y,pressure:0.9,tilt:0.},Brush{kind,size:90.+s as f32*15.,color:0xffd65a20^(s*0x111111),stabilization:0.,..Brush::default()},0.);
+            for i in 1..=30{e.sample_timed(Sample{x:-40.+i as f32*34.,y:y+(i as f32*0.5).sin()*90.,pressure:0.6+0.4*((i%5) as f32/5.),tilt:0.},i as f32*6.);if i%3==0{apply(&mut e,false);}}
+            e.end();apply(&mut e,false);
+            if s==5{e.undo();apply(&mut e,false);e.redo();apply(&mut e,false);}
+        }
+        let worst=(0..w*h).map(|i|{let b=e.color_at(i%w,i/w,true);[0,8,16,24].map(|s|((display[i]>>s&255)as i32-(b>>s&255)as i32).abs()).into_iter().max().unwrap()}).max().unwrap();
+        let bad=(0..w*h).filter(|&i|{let b=e.color_at(i%w,i/w,true);[0,8,16,24].iter().any(|s|((display[i]>>s&255)as i32-(b>>s&255)as i32).abs()>4)}).count();
+        assert!(bad==0,"Display differs from the artwork at {bad} pixels (worst {worst}) for active {active} kind {kind} mix {mix}");
+    }
+}
+
+#[test]
+#[ignore = "Requires a physical Metal or Vulkan adapter"]
+fn physical_gpu_edge_strokes_stay_on_gpu_and_keep_off_canvas_paint(){
+    for (kind,mix) in [(0u8,0.0f32),(8,0.0),(33,0.0),(0,0.7),(64,0.0)]{
+        let mut gpu=gpu_engine(320,240);let mut cpu=Engine::new(320,240).unwrap();
+        for e in [&mut gpu,&mut cpu]{
+            e.command(&json!({"op":"brushEffects","mix":mix,"pickup":mix,"wetness":mix})).unwrap();
+            if kind>=64{
+                // Something off-canvas for the eraser to remove.
+                e.begin(Sample{x:-20.,y:120.,pressure:1.,tilt:0.},Brush{size:120.,color:0xff2050c0,stabilization:0.,..Brush::default()});
+                e.sample(Sample{x:340.,y:120.,pressure:1.,tilt:0.});e.end();
+            }
+            e.begin(Sample{x:-30.,y:30.,pressure:1.,tilt:0.},Brush{kind,size:140.,color:0xffd65a20,stabilization:0.,pressure_size:0.3,..Brush::default()});
+            for i in 1..=24{e.sample(Sample{x:-30.+i as f32*16.,y:30.+i as f32*8.,pressure:0.7,tilt:0.});if i%5==0{e.flush_gpu();}}
+            e.end();
+        }
+        let batches=gpu.info()["gpuBatches"].as_u64().unwrap();
+        assert!(batches>0,"Edge stroke left the GPU for kind {kind}");
+        let diff=|a:&[u32],b:&[u32]|a.iter().zip(b).map(|(a,b)|[0,8,16,24].map(|s|((*a>>s&255)as i32-(*b>>s&255)as i32).abs()).into_iter().max().unwrap()).max().unwrap_or(0);
+        let canvas=diff(&gpu.state.layers[0].pixels.to_vec(),&cpu.state.layers[0].pixels.to_vec());
+        assert!(canvas<=6,"Canvas differs by {canvas} for kind {kind} mix {mix}");
+        let (g,c)=(&gpu.state.layers[0].exterior,&cpu.state.layers[0].exterior);
+        assert_eq!(g.keys().collect::<Vec<_>>(),c.keys().collect::<Vec<_>>(),"Off-canvas tiles differ for kind {kind}");
+        let outside=g.iter().map(|(k,t)|diff(t,&c[k])).max().unwrap_or(0);
+        assert!(outside<=6,"Off-canvas paint differs by {outside} for kind {kind} mix {mix}");
+        assert!(kind>=64 || !g.is_empty(),"No off-canvas paint was kept for kind {kind}");
+    }
+}

@@ -95,3 +95,16 @@ fn roundtrip(e:&mut Engine)->Engine{
     e.command(&json!({"op":"layer","index":1,"adjustmentKind":"Brightness","amount":0.2})).unwrap();
     assert_eq!(e.undo.len(),steps+3);
 }
+
+#[test]
+fn streamed_save_matches_the_in_memory_document(){
+    let mut e=Engine::new(300,200).unwrap();
+    e.begin(Sample{x:40.,y:40.,pressure:1.,tilt:0.},Brush{size:60.,stabilization:0.,..Brush::default()});e.sample(Sample{x:260.,y:160.,pressure:1.,tilt:0.});e.end();
+    e.command(&json!({"op":"add"})).unwrap();e.command(&json!({"op":"add"})).unwrap();
+    e.begin(Sample{x:250.,y:30.,pressure:1.,tilt:0.},Brush{size:40.,color:0xff20a040,stabilization:0.,..Brush::default()});e.sample(Sample{x:30.,y:180.,pressure:1.,tilt:0.});e.end();
+    let bytes=e.save_compressed().unwrap();
+    let mut streamed=Vec::new();e.save_compressed_to(&mut streamed).unwrap();
+    assert_eq!(streamed,bytes);
+    let reopened=Engine::load(&streamed).unwrap();
+    for (a,b) in reopened.state.layers.iter().zip(&e.state.layers){assert!(a.pixels.to_vec()==b.pixels.to_vec());}
+}

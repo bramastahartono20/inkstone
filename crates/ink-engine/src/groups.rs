@@ -167,7 +167,7 @@ impl Engine {
             let dy=v["y"].as_i64().unwrap_or(0).clamp(-(self.height as i64),self.height as i64) as i32;
             let members:Vec<_>=self.state.layers.iter().enumerate().filter(|(_,l)|self.in_group(l.group_id,id.unwrap()) && !l.is_locked()).collect();
             let extra:usize=members.iter().map(|(_,l)|self.width*self.height*4+l.exterior.len()*128*128*4).sum();
-            if Self::layer_bytes(&self.state.layers)+extra>PIXEL_BUDGET*4{return Err("Not enough canvas memory to move this group".into());}
+            if Self::layer_bytes(&self.state.layers)+extra>crate::pixel_budget(){return Err("Not enough canvas memory to move this group".into());}
             let translated=members.into_iter().map(|(i,l)|Ok((i,l.remapped(self.width,self.height,|x,y|(x+dx,y+dy))?))).collect::<Result<Vec<_>,String>>()?;
             let tiles=self.state.layers.iter().enumerate().map(|(i,l)|translated.iter().find(|(at,_)|*at==i).map_or(l.exterior.len(),|(_,l)|l.exterior.len())).sum::<usize>();
             if tiles>1024{return Err("Movement exceeds off-canvas storage capacity".into());}translated

@@ -18,6 +18,8 @@ data class ArtworkStack(val id:String,val name:String,val created:Long)
 class DocumentStore(context: Context) {
     private val galleryPrefs=context.getSharedPreferences("gallery-library",0)
     private val root = File(context.filesDir, "artworks").apply { mkdirs() }
+    // A save interrupted by the app closing leaves its temporary file behind.
+    init { root.listFiles { f -> f.name.startsWith("save-") && f.extension == "tmp" && f.lastModified() < System.currentTimeMillis() - 60_000 }?.forEach { it.delete() } }
     fun newId() = UUID.randomUUID().toString()
     private fun file(id: String, suffix: String): File {
         require(id.matches(Regex("[A-Za-z0-9-]{1,80}")))
@@ -31,6 +33,18 @@ class DocumentStore(context: Context) {
     }?.sortedByDescending { it.modified } ?: emptyList()
     @Synchronized fun save(id: String, name: String, bytes: ByteArray, image: Bitmap, documentWidth:Int=image.width, documentHeight:Int=image.height,mode:String="raster") {
         atomic(file(id, "inkstone")) { output -> encode(output, bytes) }
+        saveDetails(id,name,image,documentWidth,documentHeight,mode)
+    }
+    /** A file next to the documents, for the engine to write a raster save into. */
+    fun newSaveFile(): File = File.createTempFile("save-", ".tmp", root)
+    /** Moves a finished raster save into place; the rename leaves the previous save intact on failure. */
+    @Synchronized fun commitRaster(id: String, name: String, saved: File, image: Bitmap, documentWidth:Int, documentHeight:Int) {
+        try { check(saved.renameTo(file(id, "inkstone"))) { "Could not store drawing" } } finally { saved.delete() }
+        saveDetails(id,name,image,documentWidth,documentHeight,"raster")
+    }
+    /** The stored document when it is a binary raster file, which the engine opens directly. */
+    fun binaryDocument(id: String): File? = file(id, "inkstone").takeIf { isBinaryFile(it) }
+    private fun saveDetails(id: String, name: String, image: Bitmap, documentWidth:Int, documentHeight:Int, mode:String) {
         val scale=minOf(1f,480f/maxOf(image.width,image.height))
         val thumbnail=if(scale<1f)Bitmap.createScaledBitmap(image,(image.width*scale).toInt().coerceAtLeast(1),(image.height*scale).toInt().coerceAtLeast(1),true) else image
         try { atomic(file(id, "png")) { check(thumbnail.compress(Bitmap.CompressFormat.PNG, 100, it)) } }
@@ -91,6 +105,12 @@ class DocumentStore(context: Context) {
     companion object {
         private val BINARY = "INKBIN1\n".toByteArray(Charsets.US_ASCII)
         fun isBinary(bytes: ByteArray) = bytes.size >= BINARY.size && (BINARY.indices).all { bytes[it] == BINARY[it] }
+        fun isBinaryFile(file: File) = file.isFile && runCatching { file.inputStream().use { input -> isBinary(ByteArray(BINARY.size).also { input.read(it) }) } }.getOrDefault(false)
+        /** Starts with the binary document signature; marks and resets [input]. */
+        fun isBinary(input: java.io.BufferedInputStream): Boolean {
+            input.mark(BINARY.size); val head = ByteArray(BINARY.size); val n = input.read(head); input.reset()
+            return n == BINARY.size && isBinary(head)
+        }
         /** Binary documents are already tile-compressed; only legacy/vector JSON is gzipped. */
         fun encode(output: java.io.OutputStream, bytes: ByteArray) {
             if (isBinary(bytes)) output.write(bytes) else GZIPOutputStream(output).use { it.write(bytes) }

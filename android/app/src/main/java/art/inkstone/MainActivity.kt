@@ -78,7 +78,7 @@ class MainActivity : Activity() {
         saveCurrent{saved->
             if(!currentNavigation(ticket))return@saveCurrent
             if(!saved){atlas?.switchFailed();finishNavigation(ticket);return@saveCurrent}
-            io.execute{val data=runCatching{store.read(art.id)};runOnUiThread{if(currentNavigation(ticket))data.onSuccess{loadedDocument(it,art.id,art.name,ticket)}.onFailure{navigationFailed(ticket,"Could not open artwork: ${it.message}")}}}
+            io.execute{val data=runCatching{storedDocument(art.id)};runOnUiThread{if(currentNavigation(ticket))data.onSuccess{(bytes,file)->loadedDocument(bytes,art.id,art.name,ticket,file)}.onFailure{navigationFailed(ticket,"Could not open artwork: ${it.message}")}}}
         }
     }
     fun closeAtlas(animated:Boolean=false){atlas?.close();atlas=null;editor?.canvas?.invalidate();vectorEditor?.canvas?.invalidate()}
@@ -227,6 +227,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs.edit().remove("finger").apply()
+        DrawingSession.memoryBudget=DrawingSession.budgetFor(android.app.ActivityManager.MemoryInfo().also{(getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager).getMemoryInfo(it)}.totalMem)
         @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
@@ -253,11 +254,14 @@ class MainActivity : Activity() {
         atlas?.refresh();atlas?.activateCurrent()
         vectorEditor=VectorEditorView(this,doc);setContentView(vectorEditor);vectorEditor?.let{if(atlas==null)StudioMotion.canvasEnter(it);it.post{if(vectorEditor===it && it.isAttachedToWindow)Tutorials.welcome(this)}};scheduleVectorRecording()
     }
-    private fun loadedDocument(bytes:ByteArray,id:String,name:String,existingTicket:Long?=null){
-        val ticket=existingTicket?:beginNavigation("Opening $name…")?:return
-        if(!currentNavigation(ticket))return
+    /** A binary raster document opens from its file; other formats are read into memory. */
+    private fun storedDocument(id:String):Pair<ByteArray?,java.io.File?> =store.binaryDocument(id)?.let{null to it}?:(store.read(id) to null)
+    /** Opens [bytes], or the binary document [file] when given; a [temporary] file is deleted after loading. */
+    private fun loadedDocument(bytes:ByteArray?,id:String,name:String,existingTicket:Long?=null,file:java.io.File?=null,temporary:Boolean=false){
+        val ticket=existingTicket?:beginNavigation("Opening $name…")?:run{if(temporary)file?.delete();return}
+        if(!currentNavigation(ticket)){if(temporary)file?.delete();return}
         io.execute{
-            val parsed=runCatching{if(VectorDocument.isVector(bytes))VectorDocument.decode(bytes)else null}
+            val parsed=runCatching{if(file==null && VectorDocument.isVector(checkNotNull(bytes)))VectorDocument.decode(bytes)else null}
             runOnUiThread{
                 if(!currentNavigation(ticket))return@runOnUiThread
                 parsed.onSuccess{vector->
@@ -276,12 +280,13 @@ class MainActivity : Activity() {
                         }
                         next.onFrame={present()}
                         next.onError={navigationFailed(ticket,"Could not open project: $it")}
-                        next.load(bytes){ok->
-                            if(!currentNavigation(ticket)){next.close();return@load}
-                            if(!ok){navigationFailed(ticket,"Could not open project");return@load}
+                        val loaded:(Boolean)->Unit=loaded@{ok->
+                            if(!currentNavigation(ticket)){next.close();return@loaded}
+                            if(!ok){navigationFailed(ticket,"Could not open project");return@loaded}
                             configure(next)
                             next.command("info"){backendReady=true;present()}
                         }
+                        if(file!=null)next.load(file,temporary,loaded) else next.load(checkNotNull(bytes),loaded)
                     }
                 }.onFailure{navigationFailed(ticket,"Could not open project: ${it.message}")}
             }
@@ -392,10 +397,10 @@ class MainActivity : Activity() {
     fun openArtwork(art: Artwork) {
         val ticket=beginNavigation("Opening ${art.name}…",art.id)?:return
         io.execute {
-            val data=runCatching{store.read(art.id)}
+            val data=runCatching{storedDocument(art.id)}
             runOnUiThread{
                 if(!currentNavigation(ticket))return@runOnUiThread
-                data.onSuccess{loadedDocument(it,art.id,art.name,ticket)}.onFailure{navigationFailed(ticket,"Could not open artwork: ${it.message}")}
+                data.onSuccess{(bytes,file)->loadedDocument(bytes,art.id,art.name,ticket,file)}.onFailure{navigationFailed(ticket,"Could not open artwork: ${it.message}")}
             }
         }
     }
@@ -452,9 +457,12 @@ class MainActivity : Activity() {
                     else chooseExport("psd","image/vnd.adobe.photoshop",{file.delete()}){output->file.inputStream().use{it.copyTo(output)}}
                 }
             }
-            "Inkstone"->s.documentSnapshot{bytes->
-                if(bytes==null)message("Could not export artwork")
-                else chooseExport("inkstone","application/octet-stream"){output->DocumentStore.encode(output,bytes)}
+            "Inkstone"->{
+                val file=runCatching{java.io.File.createTempFile("inkstone-export-",".inkstone",cacheDir)}.getOrElse{message("Export failed: ${it.message}");return}
+                s.documentFile(file){error->
+                    if(error!=null){file.delete();message("Could not export artwork: $error")}
+                    else chooseExport("inkstone","application/octet-stream",{file.delete()}){output->file.inputStream().use{it.copyTo(output)}}
+                }
             }
             "PNG","JPEG"->s.imageSnapshot{image->
                 if(image==null)message("Could not export artwork")
@@ -547,10 +555,19 @@ class MainActivity : Activity() {
                         if(count==4 && String(signature,Charsets.US_ASCII)=="8BPS"){
                             val file=java.io.File.createTempFile("inkstone-import-",".psd",cacheDir)
                             try{file.outputStream().use{output->val buffer=ByteArray(65536);var total=0L;while(true){val n=input.read(buffer);if(n<0)break;total+=n;require(total<=128L*1024*1024){"PSD files must be smaller than 128 MiB"};output.write(buffer,0,n)}};null to file}catch(e:Exception){file.delete();throw e}
+                        }else if(DocumentStore.isBinary(input)){
+                            // Binary documents can exceed the Java heap, so the engine reads a copy from disk.
+                            val file=java.io.File.createTempFile("inkstone-import-",".inkstone",cacheDir)
+                            try{file.outputStream().use{input.copyTo(it)};null to file}catch(e:Exception){file.delete();throw e}
                         }else DocumentStore.decode(input) to null
                     }
                 }
-                runOnUiThread{result.onSuccess{(bytes,file)->if(isDestroyed){file?.delete()}else if(file!=null)openPsd(file)else loadedDocument(checkNotNull(bytes),store.newId(),"Imported Artwork")}.onFailure{message("Import failed: ${it.message}")}}
+                runOnUiThread{result.onSuccess{(bytes,file)->when{
+                    isDestroyed->file?.delete()
+                    file!=null && file.extension=="psd"->openPsd(file)
+                    file!=null->loadedDocument(null,store.newId(),"Imported Artwork",file=file,temporary=true)
+                    else->loadedDocument(checkNotNull(bytes),store.newId(),"Imported Artwork")
+                }}.onFailure{message("Import failed: ${it.message}")}}
             }}
             @Suppress("DEPRECATION")
             startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),101)

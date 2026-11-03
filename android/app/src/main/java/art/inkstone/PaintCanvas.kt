@@ -14,6 +14,9 @@ class PaintCanvas(context: Context, val session: DrawingSession) : View(context)
     internal val guides=DrawingGuide(context)
     internal val liquify=RasterLiquify(this,session)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    // No anti-aliasing: smoothed tile edges are partly transparent at fractional zoom, which
+    // shows the canvas base through every tile seam as a faint grid.
+    private val tilePaint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val visibleArea=RectF()
     private val inverseTransform=Matrix()
     private val transform = Matrix()
@@ -297,7 +300,7 @@ class PaintCanvas(context: Context, val session: DrawingSession) : View(context)
             // Tiles, not session.bitmap: a changed bitmap is re-uploaded whole, tiles only where painted.
             visibleArea.set(0f,0f,width.toFloat(),height.toFloat())
             if(transform.invert(inverseTransform))inverseTransform.mapRect(visibleArea)
-            session.display.draw(canvas,paint,visibleArea)
+            session.display.draw(canvas,tilePaint,visibleArea)
         }
         canvas.restoreToCount(fillSave)
         guides.draw(canvas,w,h,zoom)

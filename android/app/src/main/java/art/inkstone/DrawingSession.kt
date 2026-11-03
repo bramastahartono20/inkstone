@@ -101,7 +101,10 @@ class DrawingSession(width: Int, height: Int) : Closeable {
     private class MoveBatch(val settings:StrokeSettings,val chunks:MutableList<FloatArray>,var size:Int)
     private var pendingMoves:MoveBatch?=null
     private val main = Handler(Looper.getMainLooper())
-    private var handle = NativeBridge.create(width, height).also { check(it != 0L) { "Cannot create canvas" } }
+    private var handle = NativeBridge.create(width, height).also {
+        check(it != 0L) { "Cannot create canvas" }
+        if (memoryBudget > 0) NativeBridge.command(it, "{\"op\":\"memoryBudget\",\"bytes\":$memoryBudget}")
+    }
     @Volatile private var closed = false
     private var disposed = false
     @Volatile internal var fullyClosed=false; private set
@@ -376,7 +379,14 @@ class DrawingSession(width: Int, height: Int) : Closeable {
 
     // Reused across frames: only touched by the render worker while renderPending is set.
     private var patchPixels=IntArray(0)
-    private companion object { const val SHRINK_ABOVE_PIXELS = 1 shl 20 }
+    internal companion object {
+        private const val SHRINK_ABOVE_PIXELS = 1 shl 20
+        /** Layer memory budget in bytes for new canvases; 0 keeps the engine default. */
+        @Volatile var memoryBudget = 0L
+        /** About an eighth of the device's RAM, within 256 MB and 1.5 GB. The GPU keeps a second
+         *  copy of the layers, so the app uses roughly twice this at a full budget. */
+        fun budgetFor(totalMemory: Long) = (totalMemory * 12 / 100).coerceIn(256L shl 20, 1536L shl 20)
+    }
     internal data class ExteriorTile(val x:Float,val y:Float,val bitmap:Bitmap)
     internal var exteriorTiles=listOf<ExteriorTile>();private set
 
@@ -454,11 +464,22 @@ class DrawingSession(width: Int, height: Int) : Closeable {
             main.post {if(closed){file.delete()}else{if(error!=null)file.delete();then(error)}}
         }
     }
+    /** The document in memory; [documentFile] suits artwork too large for the Java heap. */
     fun documentSnapshot(then:(ByteArray?)->Unit){
         beforeSnapshot()
         if(closed)return
         worker.execute{val bytes=NativeBridge.save(handle);main.post{if(!closed)then(bytes)}}
     }
+    /** Writes the document into [file]; then gets null on success or the error. */
+    fun documentFile(file:java.io.File,then:(String?)->Unit){
+        beforeSnapshot()
+        if(closed){file.delete();then("Drawing engine is closed");return}
+        worker.execute{
+            val error=saveInto(file)
+            main.post{if(closed)file.delete() else then(error)}
+        }
+    }
+    private fun saveInto(file:java.io.File):String?=runCatching{JSONObject(NativeBridge.saveToFile(handle,file.absolutePath)).optString("error").takeIf{it.isNotEmpty()}}.getOrElse{it.message?:"Could not save drawing"}
     fun imageSnapshot(then:(Bitmap?)->Unit){
         beforeSnapshot()
         if(closed)return
@@ -491,23 +512,28 @@ class DrawingSession(width: Int, height: Int) : Closeable {
         synchronized(inputLock){pendingMoves=null}
         worker.execute {
             val snapshot=runCatching{
-                val bytes=checkNotNull(NativeBridge.save(handle)){"Could not save drawing"}
+                val saved=store.newSaveFile()
+                saveInto(saved)?.let{saved.delete();error(it)}
                 val preview=checkNotNull(NativeBridge.preview(handle))
                 val image=Bitmap.createBitmap(preview,2,preview[0],preview[0],preview[1],Bitmap.Config.ARGB_8888)
-                Triple(bytes,image,canvasWidth to canvasHeight)
+                Triple(saved,image,canvasWidth to canvasHeight)
             }
             if(snapshot.isFailure){main.post{then(snapshot.exceptionOrNull()?.message?:"Could not save drawing")};return@execute}
-            val (bytes,image,dimensions)=snapshot.getOrThrow()
+            val (saved,image,dimensions)=snapshot.getOrThrow()
             storage.execute{
-                val failure=runCatching{store.save(id,name,bytes,image,dimensions.first,dimensions.second)}.exceptionOrNull()?.message
+                val failure=runCatching{store.commitRaster(id,name,saved,image,dimensions.first,dimensions.second)}.exceptionOrNull()?.message
                 image.recycle();main.post{then(failure)}
             }
         }
     }
 
-    fun load(bytes: ByteArray, then: (Boolean) -> Unit) {
+    fun load(bytes: ByteArray, then: (Boolean) -> Unit) = load({NativeBridge.load(handle, bytes)}, then)
+    /** Opens a binary document file; [deleteAfter] removes a temporary copy once it is read. */
+    fun load(file: java.io.File, deleteAfter: Boolean, then: (Boolean) -> Unit) =
+        load({try{NativeBridge.loadFile(handle, file.absolutePath)}finally{if(deleteAfter)file.delete()}}, then)
+    private fun load(read: () -> String, then: (Boolean) -> Unit) {
         worker.execute {
-            val result = JSONObject(NativeBridge.load(handle, bytes))
+            val result = JSONObject(read())
             if (result.has("error")) main.post { onError(result.getString("error")); then(false) }
             else { info = result; changed(); main.post { if (!closed) { onInfo(); then(true) } } }
         }
