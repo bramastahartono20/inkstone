@@ -17,9 +17,9 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.*
 import java.io.File
 
-// Renders the Google Play listing screenshots into artifacts/store at the sizes Play accepts.
+// Renders the Google Play listing screenshots into artifacts/store at the 16:9 sizes Play accepts.
 @RunWith(org.robolectric.RobolectricTestRunner::class)
-@Config(sdk=[35],qualifiers="w1280dp-h800dp-xhdpi")
+@Config(sdk=[35],qualifiers="w1280dp-h720dp-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class StoreScreenshotsTest{
@@ -67,7 +67,7 @@ class StoreScreenshotsTest{
     @Test fun tabletScreenshots(){
         skipWelcome();val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get()
         a.newCanvas(1600,1200);val e=a.editor!!;val s=e.session
-        artwork(s);val (w,h)=2560 to 1600
+        artwork(s);val (w,h)=2560 to 1440
         render(e,"tablet-1-canvas",w,h)
         click(e,"Paint");render(e,"tablet-2-brushes",w,h)
         e.dismissPanel();click(e,"Layers");until{s.layerThumbnails.size==5};render(e,"tablet-3-layers",w,h)
@@ -81,10 +81,10 @@ class StoreScreenshotsTest{
     }
 
     @Test fun phoneScreenshots(){
-        RuntimeEnvironment.setQualifiers("w360dp-h720dp-xxhdpi");skipWelcome()
+        RuntimeEnvironment.setQualifiers("w360dp-h640dp-xxhdpi");skipWelcome()
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get()
         a.newCanvas(1600,1200);val e=a.editor!!;val s=e.session
-        artwork(s);val (w,h)=1080 to 2160
+        artwork(s);val (w,h)=1080 to 1920
         render(e,"phone-1-canvas",w,h)
         click(e,"Color");render(e,"phone-2-colors",w,h)
         e.dismissPanel();click(e,"Layers");until{s.layerThumbnails.size==5};render(e,"phone-3-layers",w,h)
