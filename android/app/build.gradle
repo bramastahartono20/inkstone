@@ -1,6 +1,11 @@
 apply plugin: 'com.android.application'
 apply plugin: 'org.jetbrains.kotlin.android'
 
+// Play Store upload key. android/keystore.properties is git-ignored; see docs/PLAY_STORE.md.
+def keystoreFile = rootProject.file('keystore.properties')
+def keystore = new Properties()
+if (keystoreFile.exists()) keystoreFile.withInputStream { keystore.load(it) }
+
 android {
     namespace 'art.inkstone'
     compileSdk 36
@@ -17,9 +22,22 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = '17' }
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            release {
+                storeFile rootProject.file(keystore['storeFile'])
+                storePassword keystore['storePassword']
+                keyAlias keystore['keyAlias']
+                keyPassword keystore['keyPassword']
+            }
+        }
+    }
     buildTypes {
         debug { applicationIdSuffix '.preview' }
-        release { minifyEnabled false }
+        release {
+            minifyEnabled false
+            if (keystoreFile.exists()) signingConfig signingConfigs.release
+        }
     }
     packaging { jniLibs { useLegacyPackaging = false } }
     testOptions {

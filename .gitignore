@@ -2,6 +2,7 @@
 target/
 android/.gradle/
 android/local.properties
+android/keystore.properties
 android/**/build/
 android/app/src/main/jniLibs/
 *.keystore
