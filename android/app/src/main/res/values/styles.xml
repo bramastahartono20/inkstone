@@ -2,7 +2,7 @@
     <style name="AppThemeBase" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:colorAccent">#248EF0</item>
+        <item name="android:colorAccent">#12877A</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowBackground">#25282C</item>
         <item name="android:windowSoftInputMode">adjustResize</item>

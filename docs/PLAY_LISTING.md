@@ -13,7 +13,7 @@ Inkstone: Drawing & Painting
 **Short description** (80 characters max)
 
 ```
-Draw and paint on Android tablets with pressure pens, layers and 50 brushes.
+Draw and paint on Android tablets with pressure pens, layers and 58 brushes.
 ```
 
 **Full description** (4000 characters max)
@@ -22,10 +22,11 @@ Draw and paint on Android tablets with pressure pens, layers and 50 brushes.
 Inkstone is a drawing and painting app for Android tablets and pressure-sensitive pens. It runs on its own drawing engine, written in Rust and accelerated by the GPU, so big brushes and fast strokes stay smooth.
 
 BRUSHES
-• 50 brush presets for sketching, inking, painting, airbrushing, calligraphy, charcoal and textures
+• 58 brush presets for pencils, pens, paint, airbrush, lettering, charcoal and textures
 • Pressure, flow and stabilization controls
 • Brush Studio for making your own brushes, including multicolor brushes
 • Eraser and smudge with the same brush library
+• Import .brush and .brushset files, with their own tips and grain
 
 PAINT MIXING (EXPERIMENTAL)
 • Mix new paint with the colors already on the canvas

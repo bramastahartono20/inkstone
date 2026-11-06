@@ -91,6 +91,17 @@ class StoreScreenshotsTest{
         e.dismissPanel();c.pause().stop().destroy();until{s.fullyClosed}
     }
 
+    @Test fun blankPhoneScreenshots(){
+        RuntimeEnvironment.setQualifiers("w360dp-h640dp-xxhdpi");skipWelcome()
+        val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get()
+        a.newCanvas(1600,1200);val e=a.editor!!;val s=e.session;settle(s);val (w,h)=1080 to 1920
+        render(e,"blank/phone-1-canvas",w,h)
+        click(e,"Color");render(e,"blank/phone-2-colors",w,h)
+        e.dismissPanel();click(e,"Layers");until{s.layerThumbnails.isNotEmpty()};render(e,"blank/phone-3-layers",w,h)
+        e.dismissPanel();click(e,"Paint");render(e,"blank/phone-4-brushes",w,h)
+        e.dismissPanel();c.pause().stop().destroy();until{s.fullyClosed}
+    }
+
     @Test fun phoneScreenshots(){
         RuntimeEnvironment.setQualifiers("w360dp-h640dp-xxhdpi");skipWelcome()
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get()
@@ -109,7 +120,7 @@ class StoreScreenshotsTest{
         val p=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
         fun shape(color:Int,vararg xy:Float){val path=android.graphics.Path();path.moveTo(x+xy[0]*scale,y+xy[1]*scale);for(i in 2 until xy.size step 2)path.lineTo(x+xy[i]*scale,y+xy[i+1]*scale);path.close();p.color=color;c.drawPath(path,p)}
         shape(0xfff4f0e9.toInt(),28f,79f,37f,52f,70f,19f,88f,37f,55f,70f)
-        shape(0xff248ef0.toInt(),28f,79f,37f,52f,55f,70f)
+        shape(0xff2bb3a3.toInt(),28f,79f,37f,52f,55f,70f)
     }
 
     @Test fun iconAndFeatureGraphic(){
@@ -120,7 +131,7 @@ class StoreScreenshotsTest{
         c.drawText("Inkstone",400f,240f,t)
         t.apply{textSize=38f;typeface=android.graphics.Typeface.DEFAULT;color=0xffc9c4bc.toInt()}
         c.drawText("Draw and paint on your tablet",404f,310f,t)
-        t.apply{textSize=22f;color=0xff248ef0.toInt();letterSpacing=.12f}
+        t.apply{textSize=22f;color=0xff2bb3a3.toInt();letterSpacing=.12f}
         c.drawText("PRESSURE PENS · LAYERS · PAINT MIXING",404f,370f,t)
         save(banner,"feature-graphic")
     }
