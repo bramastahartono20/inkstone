@@ -4,6 +4,8 @@ Inkstone is a source-available drawing app for Android tablets and pressure-sens
 
 **Early development:** features are incomplete, bugs are expected, and more improvements are on the way. Vector mode is experimental. Keep exported backups of important artwork and share device feedback through [Issues](https://github.com/bramastahartono20/inkstone/issues).
 
+**Now on Google Play closed testing:** Inkstone is in a closed test on Google Play ahead of its public release. Android users can join in about two minutes with the [step-by-step tester guide](https://vbramasta.com/inkstone/test/). Testers who keep the app for 14 days help it reach the public Play Store.
+
 ![Inkstone — custom drawing engine built in Rust](artifacts/promotion/01-main.png)
 
 **0.22 early-development release:** improves group controls with direct on-canvas movement, live blend/opacity popups and stable list scrolling. Adds consistent colour swatches, reference-image sampling feedback and custom guide/symmetry navigation. See [release notes](docs/RELEASE_0_22.md). The previous [bug-hunt report](docs/BUG_HUNT_0_21.md) remains available.
@@ -11,6 +13,8 @@ Inkstone is a source-available drawing app for Android tablets and pressure-sens
 **Testing:** local regression/build checks are recorded in [verification](docs/VERIFICATION.md). Physical stylus behavior, Android Vulkan, animation pacing and device-reported Fade behavior still need testing. Current limitations are tracked in [known issues](docs/KNOWN_ISSUES.md).
 
 ## Download
+
+Join the **[Google Play closed test](https://vbramasta.com/inkstone/test/)** to install Inkstone from the Play Store (package `art.inkstone`), or get the APK below.
 
 Get the **[0.22 APK](https://github.com/bramastahartono20/inkstone/releases/tag/v0.22)** from GitHub Releases. Requires Android 8.0 or later; ARM64 and x86-64 are included. Enable installation from the app used to open the APK when Android asks.
 
