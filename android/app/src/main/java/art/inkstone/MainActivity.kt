@@ -227,6 +227,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs.edit().remove("finger").apply()
+        BrushTips.init(this)
         DrawingSession.memoryBudget=DrawingSession.budgetFor(android.app.ActivityManager.MemoryInfo().also{(getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager).getMemoryInfo(it)}.totalMem)
         @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
@@ -315,7 +316,7 @@ class MainActivity : Activity() {
         s.pinchToFit=prefs.getBoolean("pinchToFit",true)
         s.color = prefs.getInt("color", 0xff202020.toInt())
         fun restoreBrush(b: DrawingSession.ToolBrush, key: String) {
-            val name = prefs.getString("${key}_preset", null)
+            val name = prefs.getString("${key}_preset", null)?.let(LegacyNames::brush)
             if (name != null) BrushLibrary(this).all().find { it.name == name }?.let { b.preset = it }
             b.size = prefs.getFloat("${key}_size", b.preset.size)
             b.opacity = prefs.getFloat("${key}_opacity", 1f)
@@ -323,8 +324,10 @@ class MainActivity : Activity() {
             b.pressureSize=prefs.getFloat("${key}_pressureSize",b.preset.pressureSize)
             b.pressureOpacity=prefs.getFloat("${key}_pressureOpacity",b.preset.pressureOpacity)
             b.fadeLength=prefs.getFloat("${key}_fadeLength",b.preset.fadeLength)
-            b.kind=prefs.getInt("${key}_kind",b.preset.kind).takeIf{it in 0..14 || it in 32..42}?:b.preset.kind;b.colorLayout=prefs.getString("${key}_layout",b.preset.colorLayout)?:"Along"
+            b.kind=prefs.getInt("${key}_kind",b.preset.kind).takeIf{it in 0..14 || it in 32..42 || (it==IMAGE_TIP_KIND && b.preset.tip.isNotEmpty())}?:b.preset.kind;b.colorLayout=prefs.getString("${key}_layout",b.preset.colorLayout)?:"Along"
             b.colorMode=prefs.getString("${key}_colorMode",b.preset.colorMode)?:"Solid";b.colorCycle=prefs.getFloat("${key}_cycle",b.preset.colorCycle);b.wetMix=prefs.getFloat("${key}_mix",b.preset.wetMix);b.wetPickup=prefs.getFloat("${key}_pickup",b.preset.wetPickup).coerceIn(0f,1f);b.wetness=prefs.getFloat("${key}_wetness",b.preset.wetness).coerceIn(0f,1f);b.palette=runCatching{val a=org.json.JSONArray(prefs.getString("${key}_palette",org.json.JSONArray(b.preset.palette).toString()));(0 until a.length().coerceAtMost(12)).map{a.getLong(it).toInt()}}.getOrDefault(b.preset.palette)
+            b.tipSpacing=prefs.getFloat("${key}_tipSpacing",b.preset.tipSpacing).coerceIn(.02f,4f);b.tipFollow=prefs.getFloat("${key}_tipFollow",b.preset.tipFollow).coerceIn(-1f,1f);b.tipJitter=prefs.getFloat("${key}_tipJitter",b.preset.tipJitter).coerceIn(0f,1f);b.grainScale=prefs.getFloat("${key}_grainScale",b.preset.grainScale).coerceIn(.05f,16f)
+            b.tipRotation=prefs.getFloat("${key}_tipRotation",b.preset.tipRotation).coerceIn(-7f,7f);b.tipSizeJitter=prefs.getFloat("${key}_tipSizeJitter",b.preset.tipSizeJitter).coerceIn(0f,1f);b.tipOpacityJitter=prefs.getFloat("${key}_tipOpacityJitter",b.preset.tipOpacityJitter).coerceIn(0f,1f);b.tipScatter=prefs.getFloat("${key}_tipScatter",b.preset.tipScatter).coerceIn(0f,3f);b.grainRolling=prefs.getBoolean("${key}_grainRolling",b.preset.grainRolling);b.tipSpeedOpacity=prefs.getFloat("${key}_tipSpeedOpacity",b.preset.tipSpeedOpacity).coerceIn(0f,1f);b.tipDynamics=prefs.getString("${key}_tipDynamics",null)?.let{runCatching{TipDynamics.from(org.json.JSONObject(it))}.getOrNull()}?:b.preset.tipDynamics
         }
         restoreBrush(s.paintBrush, "paint_brush")
         restoreBrush(s.smudgeBrush, "smudge_brush")
@@ -338,6 +341,8 @@ class MainActivity : Activity() {
             edit.putInt("${key}_kind",b.kind).putString("${key}_layout",b.colorLayout)
             edit.putString("${key}_palette",org.json.JSONArray(b.palette).toString()).putString("${key}_colorMode",b.colorMode).putFloat("${key}_cycle",b.colorCycle).putFloat("${key}_mix",b.wetMix).putFloat("${key}_pickup",b.wetPickup).putFloat("${key}_wetness",b.wetness)
             edit.putFloat("${key}_flow",b.flow).putFloat("${key}_pressureSize",b.pressureSize).putFloat("${key}_pressureOpacity",b.pressureOpacity).putFloat("${key}_fadeLength",b.fadeLength)
+            edit.putFloat("${key}_tipSpacing",b.tipSpacing).putFloat("${key}_tipFollow",b.tipFollow).putFloat("${key}_tipJitter",b.tipJitter).putFloat("${key}_grainScale",b.grainScale)
+            edit.putFloat("${key}_tipRotation",b.tipRotation).putFloat("${key}_tipSizeJitter",b.tipSizeJitter).putFloat("${key}_tipOpacityJitter",b.tipOpacityJitter).putFloat("${key}_tipScatter",b.tipScatter).putBoolean("${key}_grainRolling",b.grainRolling).putFloat("${key}_tipSpeedOpacity",b.tipSpeedOpacity).putString("${key}_tipDynamics",b.tipDynamics.json().toString())
         }
         edit.putString("symmetryMode",s.symmetryMode).putFloat("eraserHardness",s.eraserHardness).putBoolean("penOnly",s.penOnly).putBoolean("protectControls",s.protectControls).putFloat("stabilization",s.stabilization).putString("rendererMode",s.rendererMode).putBoolean("pressureEnabled",s.pressureEnabled).putBoolean("canvasLocked",s.canvasLocked).putBoolean("quickShape",s.quickShape).putString("cursorStyle",s.cursorStyle).putFloat("cursorOpacity",s.cursorOpacity)
             .putBoolean("twoFingerUndo",s.twoFingerUndo).putBoolean("threeFingerRedo",s.threeFingerRedo)
@@ -572,6 +577,27 @@ class MainActivity : Activity() {
             @Suppress("DEPRECATION")
             startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),101)
         }}
+    }
+    /** Imports Procreate .brush or .brushset files into the brush library. [then] gets the category used. */
+    internal fun importBrushes(then:(String)->Unit){
+        onImported={uri->
+            val fileName=runCatching{contentResolver.query(uri,arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),null,null,null)?.use{if(it.moveToFirst())it.getString(0) else null}}.getOrNull()
+            message("Importing brushes…")
+            io.execute{
+                val result=runCatching{
+                    val read=contentResolver.openInputStream(uri).use{ProcreateBrushes.read(checkNotNull(it){"Cannot open this file"})}
+                    require(BrushLibrary(this).custom().size+read.brushes.size<=500){"Brush library is full"}
+                    val group=(read.setName?:fileName?.substringBeforeLast('.')?.takeIf{read.brushes.size>1}?:"Imported").trim().ifEmpty{"Imported"}.take(60)
+                    try{group to BrushLibrary(this).addAll(read.brushes.map{ProcreateBrushes.preset(it,group)},group)}
+                    finally{read.brushes.forEach{it.shape?.recycle();it.grain?.recycle()}}
+                }
+                runOnUiThread{result.onSuccess{(group,added)->
+                    message(if(added.size==1)"Imported ${added[0].name}" else "Imported ${added.size} brushes into $group");if(!isDestroyed)then(group)
+                }.onFailure{message("Brush import failed: ${it.message}")}}
+            }
+        }
+        @Suppress("DEPRECATION")
+        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),101)
     }
     internal fun chooseReference(then:(Bitmap)->Unit){
         onImported={uri->io.execute{val result=runCatching{

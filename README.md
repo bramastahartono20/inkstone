@@ -8,7 +8,7 @@ Inkstone is a source-available drawing app for Android tablets and pressure-sens
 
 ![Inkstone — custom drawing engine built in Rust](artifacts/promotion/01-main.png)
 
-**0.22 early-development release:** improves group controls with direct on-canvas movement, live blend/opacity popups and stable list scrolling. Adds consistent colour swatches, reference-image sampling feedback and custom guide/symmetry navigation. See [release notes](docs/RELEASE_0_22.md). The previous [bug-hunt report](docs/BUG_HUNT_0_21.md) remains available.
+**0.25 early-development release:** imports `.brush` and `.brushset` files with their own tips and grain, gives the interface a darker look with a teal accent and new Paint Mixing and Smudge icons, renames Gallery to Home, and gives the brush library new names. See [release notes](docs/RELEASE_0_25.md).
 
 **Testing:** local regression/build checks are recorded in [verification](docs/VERIFICATION.md). Physical stylus behavior, Android Vulkan, animation pacing and device-reported Fade behavior still need testing. Current limitations are tracked in [known issues](docs/KNOWN_ISSUES.md).
 
@@ -16,7 +16,7 @@ Inkstone is a source-available drawing app for Android tablets and pressure-sens
 
 Join the **[Google Play closed test](https://vbramasta.com/inkstone/test/)** to install Inkstone from the Play Store (package `art.inkstone`), or get the APK below.
 
-Get the **[0.22 APK](https://github.com/bramastahartono20/inkstone/releases/tag/v0.22)** from GitHub Releases. Requires Android 8.0 or later; ARM64 and x86-64 are included. Enable installation from the app used to open the APK when Android asks.
+Get the **[0.25 APK](https://github.com/bramastahartono20/inkstone/releases/tag/v0.25)** from GitHub Releases. Requires Android 8.0 or later; ARM64 and x86-64 are included. Enable installation from the app used to open the APK when Android asks.
 
 The preview uses package `art.inkstone.preview`. Install over an existing preview to retain local artwork. Artwork lives in app-private storage: export editable `.inkstone` backups before uninstalling or clearing app data. No account, server, internet permission, analytics, or subscription is required.
 
@@ -49,13 +49,13 @@ Raster drawing can continue outside the paper; its ink stays attached to the lay
 
 ## What you can try
 
-- **Organize the gallery:** sort by name or dates, tag/filter artworks, and create named stacks with artwork counts. Hold an artwork and drop it into a stack card or the Drag to destinations. Use ⋯ for artwork options, or Select for bulk tags/stack changes.
+- **Organize Home:** sort by name or dates, tag/filter artworks, and create named stacks with artwork counts. Hold an artwork and drop it into a stack card or the Drag to destinations. Use ⋯ for artwork options, or Select for bulk tags/stack changes.
 
 - **Draw, smudge and erase:** 50 procedural presets, pressure controls, flow, stabilization and a global pressure toggle. Eraser has the same preset library, inverted previews and separate brush settings. Tap the Eraser icon to select it and open its library; the library's + button opens settings including edge hardness.
 - **Canvas Atlas:** pinch out to browse nearby artwork in the same workspace. Pan, zoom and rotate; tap an artwork to activate drawing in place. Hold and drag overview artworks to arrange them. Inactive canvases use cached previews. Select Eyedropper and touch another visible artwork to sample its saved preview without switching documents.
 - **Multicolor and personal brushes:** open Brush Library → + → Brush Studio → Multicolor settings. Edit up to 12 colors, choose among 13 tip types, and adjust arrangement and cycle length. Save personal presets and categories from the library.
 - **Paint Mixing (experimental):** tap the palette/swirl icon beside Brush. Adjust strength, pickup and wetness to mix with pre-existing paint on the active layer. Choose Brush to return to dry painting. Uses an approximate RYB model and CPU painting.
-- **ColorDrop:** drag the active color into an enclosed area, pause for the fill preview, then slide left/right to adjust threshold. Release to commit in one Undo step. Color selection includes a wheel, a square picker, hex/RGB values and palettes. In Raster mode, drag the rectangular preview at the top of Colors onto the palette to save it. Completed painting/fills add used colors to Recent colours automatically; hold still on the canvas to pick directly. Open **Palette → + New palette** or **Palettes → New palette** to create a named palette; custom palettes stay saved across artworks and app restarts.
+- **Drop Fill:** drag the active color into an enclosed area, pause for the fill preview, then slide left/right to adjust threshold. Release to commit in one Undo step. Color selection includes a wheel, a square picker, hex/RGB values and palettes. In Raster mode, drag the rectangular preview at the top of Colors onto the palette to save it. Completed painting/fills add used colors to Recent colours automatically; hold still on the canvas to pick directly. Open **Palette → + New palette** or **Palettes → New palette** to create a named palette; custom palettes stay saved across artworks and app restarts.
 - **Layers:** add, rename, duplicate, reorder, lock, hide, adjust opacity, use alpha lock/clipping and fifteen blend modes. Raster folders support multiple nesting levels, increasing indentation, visibility/lock, collapse, group blend/opacity and animated layer/group drag/drop. Create independent folders from Layers → Group; use Location to choose a parent. Empty folders retain their positions. Open a group’s blend/options button → Blend & opacity. Drag beyond a folder boundary to leave it. Swipe left on a layer for actions.
 - **Select and transform:** Automatic/freehand/rectangle/ellipse selection, Add/Remove/Invert, Feather, saved selections, clipboard actions, and Freeform/Uniform/Distort/Warp transforms. The compact bottom toolbar groups tools and scrolls horizontally. Corner and edge handles, free rotation, flips and two-finger object transforms are supported. Inserted images enter Transform automatically. Tap Done to apply.
 - **Pen and touch controls:** pen-only input, control palm protection, handedness, hover cursor, canvas-position lock, hold-to-shape fitting and gesture Undo/Redo.
@@ -77,7 +77,7 @@ Use **Save** for project saving, Photo Gallery PNG/JPG output, or exports to a c
 
 ## Performance and limitations
 
-The Rust engine uses `wgpu` compute for brush/eraser stamps, smudge and live layer compositing when a supported Vulkan adapter is available, with automatic CPU fallback. Choose a backend in **Actions → Prefs → Drawing renderer**. Bitmap presentation/readback, ColorDrop, adjustments and export still involve CPU work. This is a hybrid renderer; a tiled renderer and direct GPU presentation remain future work.
+The Rust engine uses `wgpu` compute for brush/eraser stamps, smudge and live layer compositing when a supported Vulkan adapter is available, with automatic CPU fallback. Choose a backend in **Actions → Prefs → Drawing renderer**. Bitmap presentation/readback, Drop Fill, adjustments and export still involve CPU work. This is a hybrid renderer; a tiled renderer and direct GPU presentation remain future work.
 
 Canvas area is limited to 16 megapixels, with separate layer and history memory budgets. Large artwork can still consume substantial memory and export slowly. Sustained latency, thermals, pressure calibration and Vulkan driver behavior need further Android device testing. Vector mode currently lacks SVG import, text, boolean operations, gradients, tracing, multi-object selection and pressure-varying strokes. Text, time-lapse and animation are not available. Raster folders support nested groups; experimental Vector folders and gallery stacks remain one level. Atlas layout, gallery metadata and personal brush libraries stay device-local. Experimental Wet mix is an approximate RYB model; physical pigment and thick-paint simulation are not included. Raster Warp uses a fixed grid; see the preview instructions for its limits.
 

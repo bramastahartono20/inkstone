@@ -35,7 +35,7 @@ internal object Tutorials {
             Step("See your other canvases","Zoom out with two fingers to enter Canvas Atlas, or open it from Actions → Canvas."),
             Step("Navigate, then draw","Pan around the board and choose an artwork to activate it. The surrounding canvases remain previews while you work on the active canvas."))),
         Lesson("Save & time-lapse",listOf(
-            Step("Your editable artwork","Artwork autosaves locally. Gallery returns to your library after saving. Actions → Share exports PNG, JPEG, PSD or an editable Inkstone document."),
+            Step("Your editable artwork","Artwork autosaves locally. Home returns to your library after saving. Actions → Share exports PNG, JPEG, PSD or an editable Inkstone document."),
             Step("Record your progress","Actions → Video controls time-lapse recording for this artwork. It records your drawing progress without your menus or reference window."),
             Step("Export your video","Choose 30 seconds, 1 minute or 2 minutes in Actions → Video. Tap Export time-lapse, watch the progress, then choose where to save the MP4. Recording starts from when it is enabled; it cannot recreate earlier work.")))
     )

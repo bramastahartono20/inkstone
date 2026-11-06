@@ -90,7 +90,7 @@ class StudioTest {
         val s=checkNotNull(activity.session);val editor=checkNotNull(activity.editor)
         landscape(s);render(editor,"editor-tablet-framework")
         click(editor,"Paint");render(editor,"brush-library")
-        click(editor,"Airbrushing");click(editor,"Soft Brush, Airbrushing");render(editor,"brush-library-airbrushing")
+        click(editor,"Airbrush");click(editor,"Cloud Soft, Airbrush");render(editor,"brush-library-airbrushing")
         editor.dismissPanel();click(editor,"Color");render(editor,"colors")
         editor.dismissPanel();click(editor,"Layers");until{s.layerThumbnails.size==3};shadowOf(Looper.getMainLooper()).idle();render(editor,"layers")
         editor.dismissPanel();click(editor,"Actions");render(editor,"actions")
@@ -119,7 +119,7 @@ class StudioTest {
         val controller=Robolectric.buildActivity(MainActivity::class.java).setup();val a=controller.get()
         a.newCanvas(1000,600);val e=checkNotNull(a.editor);val session=checkNotNull(a.session)
         session.stabilization=0f;session.pressureEnabled=false;session.color=0xff174f90.toInt()
-        for((row,name) in listOf("Soft Brush","Medium Brush","Medium Hard Brush","Hard Brush").withIndex()){
+        for((row,name) in listOf("Cloud Soft","Cloud Medium","Cloud Medium Firm","Cloud Firm").withIndex()){
             session.choose(brushPresets.first{it.name==name});session.size=80f
             session.stroke(0,floatArrayOf(100f,90f+row*130,1f,0f))
             session.stroke(1,floatArrayOf(400f,90f+row*130,1f,0f));session.stroke(2,floatArrayOf())
@@ -129,7 +129,7 @@ class StudioTest {
         session.command("select",JSONObject().put("shape","Rectangle").put("points",JSONArray().put(JSONArray().put(720).put(80)).put(JSONArray().put(870).put(520))))
         session.command("fill",JSONObject().put("color",0xff2466c2L));session.command("deselect")
         until{session.info.optInt("undo")==6};render(e,"brush-engine-before-smudge")
-        session.tool="Smudge";session.choose(brushPresets.first{it.name=="Soft Brush"});session.size=100f;session.flow=1f
+        session.tool="Smudge";session.choose(brushPresets.first{it.name=="Cloud Soft"});session.size=100f;session.flow=1f
         session.stroke(0,floatArrayOf(680f,300f,1f,0f));session.stroke(1,floatArrayOf(790f,300f,1f,0f));session.stroke(2,floatArrayOf())
         until{session.info.optInt("undo")==7};render(e,"brush-engine-after-smudge")
         shutdown(controller)
@@ -218,7 +218,7 @@ class StudioTest {
         val controller=Robolectric.buildActivity(MainActivity::class.java).setup();val a=controller.get();val e=checkNotNull(a.editor)
         render(e,"panel-before");click(e,"Paint");render(e,"brush-before-switch")
         val panel=e.findViewWithTag<View>("tool-panel")
-        click(e,"Airbrushing");assertSame(panel,e.findViewWithTag<View>("tool-panel"));render(e,"brush-after-switch")
+        click(e,"Airbrush");assertSame(panel,e.findViewWithTag<View>("tool-panel"));render(e,"brush-after-switch")
         e.dismissPanel();click(e,"Color");click(e,"Classic");render(e,"classic-square-palette")
         shutdown(controller)
     }
@@ -315,7 +315,8 @@ class StudioTest {
         assertFalse(activity.store.list().any{it.id==activity.documentId})
         touch(MotionEvent.ACTION_MOVE,700f);touch(MotionEvent.ACTION_UP,750f)
         until{session.info.getInt("undo")==1}
-        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(2000))
+        // Idle autosave runs 8 s after the last change.
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(8500))
         until{activity.store.list().any{it.id==activity.documentId}}
         assertFalse(session.isStrokeActive)
         shutdown(controller)
@@ -323,7 +324,7 @@ class StudioTest {
 
     @Test fun sliderShowsLivePreviewAndCancels() {
         val controller=Robolectric.buildActivity(MainActivity::class.java).setup()
-        val editor=checkNotNull(controller.get().editor);controller.get().session?.choose(brushPresets.first{it.name=="Soft Brush"});render(editor,"slider-before")
+        val editor=checkNotNull(controller.get().editor);controller.get().session?.choose(brushPresets.first{it.name=="Cloud Soft"});render(editor,"slider-before")
         fun find(v:View):View? {if(v.contentDescription=="Brush size")return v;if(v is ViewGroup)for(i in 0 until v.childCount)find(v.getChildAt(i))?.let{return it};return null}
         val slider=checkNotNull(find(editor))
         val down=MotionEvent.obtain(0,0,MotionEvent.ACTION_DOWN,12f,slider.height*.7f,0);slider.dispatchTouchEvent(down);down.recycle()
@@ -451,11 +452,11 @@ class StudioTest {
 
     @Test fun eraserLibrarySharesPresetsAndKeepsDrawingBrushSeparate(){
         val controller=Robolectric.buildActivity(MainActivity::class.java).setup();val a=controller.get();a.newCanvas(160,120)
-        val e=checkNotNull(a.editor);val s=checkNotNull(a.session);s.choose(brushPresets.first{it.name=="Technical Pen"});s.size=9f
+        val e=checkNotNull(a.editor);val s=checkNotNull(a.session);s.choose(brushPresets.first{it.name=="Drafting Pen"});s.size=9f
         render(e,"eraser-library-before");click(e,"Erase");assertNotNull(named(e,"Eraser Library"))
-        click(e,"Airbrushing");click(e,"Soft Brush, Airbrushing, eraser");assertEquals("Soft Brush",s.preset.name);s.size=70f
-        render(e,"eraser-library-soft");e.dismissPanel();click(e,"Paint");assertEquals("Technical Pen",s.preset.name);assertEquals(9f,s.size,0f)
-        click(e,"Erase");assertEquals("Soft Brush",s.preset.name);assertEquals(70f,s.size,0f)
+        click(e,"Airbrush");click(e,"Cloud Soft, Airbrush, eraser");assertEquals("Cloud Soft",s.preset.name);s.size=70f
+        render(e,"eraser-library-soft");e.dismissPanel();click(e,"Paint");assertEquals("Drafting Pen",s.preset.name);assertEquals(9f,s.size,0f)
+        click(e,"Erase");assertEquals("Cloud Soft",s.preset.name);assertEquals(70f,s.size,0f)
         shutdown(controller)
     }
 
@@ -542,7 +543,8 @@ class StudioTest {
         val controller=Robolectric.buildActivity(MainActivity::class.java).setup();val a=controller.get();val e=photoTransform(controller);val s=e.session;val preview=e.canvas.rasterTransform;val undo=s.info.getInt("undo")
         click(e,"Smaller");click(e,"Smaller");assertEquals(64.8f,preview.bounds!!.width(),.02f)
         var saved=false;a.saveCurrent{assertTrue(it);saved=true};until{saved};assertEquals(undo+1,s.info.getInt("undo"))
-        val file=a.store.read(a.documentId);val root=JSONObject(file.toString(Charsets.UTF_8));assertEquals(320,root.getInt("width"))
+        // Documents are saved in the binary format, so check the saved size through the store's index.
+        assertEquals(320,a.store.list().first{it.id==a.documentId}.width)
         until{preview.ready};click(e,"Larger");var added=false;s.command("add"){added=true};until{added};assertEquals(undo+3,s.info.getInt("undo"));assertEquals(2,s.info.getInt("active"));shutdown(controller)
     }
 

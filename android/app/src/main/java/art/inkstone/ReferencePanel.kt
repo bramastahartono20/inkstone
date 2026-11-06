@@ -84,7 +84,7 @@ internal class ReferenceImage(context:android.content.Context,private val picked
             paint.alpha=255;paint.style=Paint.Style.STROKE;paint.color=pickColor;paint.strokeWidth=10*d;c.drawCircle(x,y,28*d,paint)
             paint.color=Color.WHITE;paint.strokeWidth=2*d;c.drawCircle(x,y,33*d,paint);paint.style=Paint.Style.FILL
         }
-        if(picking){paint.color=0xbb2b8ed1.toInt();c.drawRect(0f,0f,width.toFloat(),4*resources.displayMetrics.density,paint)}
+        if(picking){paint.color=0xbb1fa898.toInt();c.drawRect(0f,0f,width.toFloat(),4*resources.displayMetrics.density,paint)}
     }
     override fun onTouchEvent(e:MotionEvent):Boolean{parent.requestDisallowInterceptTouchEvent(true);val b=bitmap?:return true
         if(e.actionMasked==MotionEvent.ACTION_MOVE && hypot(e.x-holdStart.x,e.y-holdStart.y)>slop)removeCallbacks(hold)

@@ -340,7 +340,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                 if(t.groupId==null)group("Options",t.interpolation){button("Snapping",t.snapping){t.snapping=!t.snapping;updateBottom()};button(t.interpolation){AlertDialog.Builder(activity).setTitle("Transform interpolation").setItems(arrayOf("Nearest","Bilinear")){_,index->t.interpolation=if(index==0)"Nearest"else"Bilinear";updateBottom()}.show()}}
                 button("Reset"){t.reset()};button("Cancel"){t.finish(cancel=true);session.tool="Paint";refreshTools()};button("Done"){session.tool="Paint";refreshTools()}
             }
-            "Fill"->{button("ColorDrop"){showNotice("Tap an enclosed area to fill it")};button("Fill layer"){session.command("fill",JSONObject().put("color",colorLong()));activity.scheduleSave()};button("Done"){session.tool="Paint";refreshTools()}}
+            "Fill"->{button("Drop Fill"){showNotice("Tap an enclosed area to fill it")};button("Fill layer"){session.command("fill",JSONObject().put("color",colorLong()));activity.scheduleSave()};button("Done"){session.tool="Paint";refreshTools()}}
         }
     }
     private fun transform(key:String,value:Float){canvas.rasterTransform.operation(key,value)}
@@ -454,7 +454,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
             fun populate(){
                 list.removeAllViews();listScroll.scrollTo(0,0)
                 categoryViews.forEach{(group,item)->item.background=rounded(if(group==brushGroup)blue else 0x226e7175,StudioShape.CORNER_DP);(item.getChildAt(1) as TextView).setTextColor(if(group==brushGroup)Color.WHITE else theme.secondary);(item.getChildAt(0) as? CategoryIcon)?.let{it.chosen=group==brushGroup;it.invalidate()}}
-                val presets=if(brushGroup=="Recent")(RecentBrushes(activity).list(session.tool)+session.preset).distinct() else BrushLibrary(activity).all().filter{it.group==brushGroup}.sortedBy{if(brushGroup=="Airbrushing")listOf("Soft Brush","Medium Brush","Medium Hard Brush","Hard Brush","Soft Blend","Medium Blend","Medium Hard Blend","Hard Blend","Soft Airbrush","Medium Airbrush","Fine Airbrush").indexOf(it.name) else 0}
+                val presets=if(brushGroup=="Recent")(RecentBrushes(activity).list(session.tool)+session.preset).distinct() else BrushLibrary(activity).all().filter{it.group==brushGroup}.sortedBy{if(brushGroup=="Airbrush")listOf("Cloud Soft","Cloud Medium","Cloud Medium Firm","Cloud Firm","Blend Soft","Blend Medium","Blend Medium Firm","Blend Firm","Mist Soft","Mist Medium","Mist Fine").indexOf(it.name) else 0}
                 val previews=mutableListOf<BrushPreview>()
                 for(preset in presets){
                     val preview=BrushPreview(activity,preset,session.preset==preset,session.tool=="Erase").apply{
@@ -509,6 +509,31 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                 brushSlider(body,"Fade tail length",session.fadeLength/2000f){session.fadeLength=it*2000f;activity.savePreferences()}
                 brushSlider(body,"Pressure → Size",session.pressureSize){session.pressureSize=it;activity.savePreferences()}
                 brushSlider(body,"Pressure → Opacity",session.pressureOpacity){session.pressureOpacity=it;activity.savePreferences()}
+                val b=session.currentBrush
+                if(b.kind==IMAGE_TIP_KIND && b.preset.tip.isNotEmpty()){
+                    // Image tips. Spacing reaches 2 × the diameter; grain scale is 0.25 to 4 (canvas pixels
+                    // per texel, or brush sizes per tile when the grain rolls).
+                    brushSlider(body,"Spacing",(b.tipSpacing/2f).coerceIn(0f,1f)){b.tipSpacing=(it*2f).coerceAtLeast(.02f);activity.savePreferences()}
+                    degreeSlider(body,"Rotation",b.tipRotation){b.tipRotation=it;activity.savePreferences()}
+                    brushSlider(body,"Follow stroke",b.tipFollow.coerceIn(0f,1f)){b.tipFollow=it;activity.savePreferences()}
+                    brushSlider(body,"Random rotation",b.tipJitter){b.tipJitter=it;activity.savePreferences()}
+                    brushSlider(body,"Random size",b.tipSizeJitter){b.tipSizeJitter=it;activity.savePreferences()}
+                    brushSlider(body,"Random opacity",b.tipOpacityJitter){b.tipOpacityJitter=it;activity.savePreferences()}
+                    brushSlider(body,"Scatter",(b.tipScatter/3f).coerceIn(0f,1f)){b.tipScatter=it*3f;activity.savePreferences()}
+                    brushSlider(body,"Speed → Opacity",b.tipSpeedOpacity){b.tipSpeedOpacity=it;activity.savePreferences()}
+                    brushSlider(body,"Speed → Size",(b.tipDynamics.speedSize+1f)/2f){b.tipDynamics=b.tipDynamics.copy(speedSize=it*2f-1f);activity.savePreferences()}
+                    brushSlider(body,"Taper start",b.tipDynamics.taperStart){b.tipDynamics=b.tipDynamics.copy(taperStart=it);activity.savePreferences()}
+                    brushSlider(body,"Taper end",b.tipDynamics.taperEnd){b.tipDynamics=b.tipDynamics.copy(taperEnd=it);activity.savePreferences()}
+                    brushSlider(body,"Taper → Size",b.tipDynamics.taperSize){b.tipDynamics=b.tipDynamics.copy(taperSize=it);activity.savePreferences()}
+                    brushSlider(body,"Taper → Opacity",b.tipDynamics.taperOpacity){b.tipDynamics=b.tipDynamics.copy(taperOpacity=it);activity.savePreferences()}
+                    brushSlider(body,"Tilt → Size",b.tipDynamics.tiltSize){b.tipDynamics=b.tipDynamics.copy(tiltSize=it);activity.savePreferences()}
+                    brushSlider(body,"Tilt → Opacity",b.tipDynamics.tiltOpacity){b.tipDynamics=b.tipDynamics.copy(tiltOpacity=it);activity.savePreferences()}
+                    body.addView(row("Blend mode",TipDynamics.BLEND_NAMES[b.tipDynamics.blend]){b.tipDynamics=b.tipDynamics.copy(blend=(b.tipDynamics.blend+1)%4);activity.savePreferences();rebuildPanel{brushStudio(left)}})
+                    if(b.grainRolling || BrushTips.load(b.preset.tip)?.grainSize?:0>0){
+                        brushSlider(body,"Grain scale",((b.grainScale-.25f)/3.75f).coerceIn(0f,1f)){b.grainScale=.25f+it*3.75f;activity.savePreferences()}
+                        toggle(body,"Grain follows stroke",b.grainRolling){b.grainRolling=it;activity.savePreferences()}
+                    }
+                }
                 if(session.tool=="Paint"){
                     body.addView(row("Multicolor settings",session.currentBrush.colorMode){multicolorSettings(left)})
 
@@ -521,7 +546,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         }
     }
     private val persistWheelColor=Runnable{activity.savePreferences()}
-    private fun currentPreset()=session.preset.copy(kind=session.currentBrush.kind,colorLayout=session.currentBrush.colorLayout,size=session.size,flow=session.flow,pressureSize=session.pressureSize,pressureOpacity=session.pressureOpacity,fadeLength=session.fadeLength,opacity=session.opacity,stabilization=session.stabilization,hardness=session.eraserHardness,colorMode=session.currentBrush.colorMode,colorCycle=session.currentBrush.colorCycle,wetMix=session.currentBrush.wetMix,wetPickup=session.currentBrush.wetPickup,wetness=session.currentBrush.wetness,palette=session.currentBrush.palette)
+    private fun currentPreset()=session.preset.copy(kind=session.currentBrush.kind,colorLayout=session.currentBrush.colorLayout,size=session.size,flow=session.flow,pressureSize=session.pressureSize,pressureOpacity=session.pressureOpacity,fadeLength=session.fadeLength,opacity=session.opacity,stabilization=session.stabilization,hardness=session.eraserHardness,colorMode=session.currentBrush.colorMode,colorCycle=session.currentBrush.colorCycle,wetMix=session.currentBrush.wetMix,wetPickup=session.currentBrush.wetPickup,wetness=session.currentBrush.wetness,palette=session.currentBrush.palette,tipSpacing=session.currentBrush.tipSpacing,tipFollow=session.currentBrush.tipFollow,tipRotation=session.currentBrush.tipRotation,tipJitter=session.currentBrush.tipJitter,grainScale=session.currentBrush.grainScale,tipSizeJitter=session.currentBrush.tipSizeJitter,tipOpacityJitter=session.currentBrush.tipOpacityJitter,tipScatter=session.currentBrush.tipScatter,grainRolling=session.currentBrush.grainRolling,tipSpeedOpacity=session.currentBrush.tipSpeedOpacity,tipDynamics=session.currentBrush.tipDynamics)
     private fun saveLibraryBrush(){
         val library=BrushLibrary(activity);val p=currentPreset()
         if(p.customId.isEmpty())libraryName("New brush name",p.name+" copy"){name->runCatching{library.copy(p,name)}.onSuccess{session.choose(it);activity.savePreferences();brushStudio()}.onFailure{showNotice(it.message?:"Cannot save brush")}}
@@ -542,6 +567,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         }}
     }
     private fun addLibraryItem(){libraryMenu("Brush library",listOf(
+        "Import .brush / .brushset" to {activity.importBrushes{group->brushGroup=group;if(panelKey=="Library options" || panelKey=="Brushes")rebuildPanel(::brushes)}},
         "Brush Studio" to {brushStudio()},
         "Multicolor settings" to {multicolorSettings(false)},
         "New brush" to {newLibraryBrush(true)},
@@ -575,6 +601,12 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
         brushSlider(body,"Wetness",session.paintBrush.wetness){session.paintBrush.wetness=it;activity.savePreferences()}
         body.addView(row("Done"){dismissPanel()})
     }}}
+    /** A slider for an angle in radians, shown in degrees from -180° to 180°. */
+    private fun degreeSlider(body:LinearLayout,label:String,radians:Float,changed:(Float)->Unit){
+        fun degrees(v:Float)=((v*180f/Math.PI.toFloat()).roundToInt()+540)%360-180
+        val title=text("$label ${degrees(radians)}°",14f);body.addView(title,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
+        body.addView(BrushRange(activity,((degrees(radians)+180)/360f).coerceIn(0f,1f),theme.light){amount->val r=(amount*360f-180f)*Math.PI.toFloat()/180f;title.text="$label ${degrees(r)}°";changed(r)}.apply{contentDescription=label},LinearLayout.LayoutParams(-1,dp(44)))
+    }
     private fun brushSlider(body:LinearLayout,label:String,value:Float,changed:(Float)->Unit){
         val title=text("$label ${(value*100).roundToInt()}%",14f);body.addView(title,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
         body.addView(BrushRange(activity,value,theme.light){amount->title.text="$label ${(amount*100).roundToInt()}%";changed(amount)}.apply{contentDescription=label},LinearLayout.LayoutParams(-1,dp(44)))
@@ -616,7 +648,7 @@ class EditorView(val activity: MainActivity, val session: DrawingSession) : Fram
                 }
             }
             body.addView(row("Eyedropper","Pick from canvas"){dismissPanel();session.tool="Eyedropper";refreshTools();showNotice("Touch the canvas to pick a color")})
-            body.addView(row("ColorDrop","Fill an enclosed area"){dismissPanel();session.tool="Fill";refreshTools();showNotice("Tap an enclosed area to fill it")})
+            body.addView(row("Drop Fill","Fill an enclosed area"){dismissPanel();session.tool="Fill";refreshTools();showNotice("Tap an enclosed area to fill it")})
 
         }
     }

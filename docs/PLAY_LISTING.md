@@ -40,7 +40,7 @@ LAYERS
 COLOR
 • Color wheel, square picker, hex and RGB input
 • Saved palettes and recent colors
-• ColorDrop fill: drag a color into an area and slide to adjust the threshold
+• Drop Fill: drag a color into an area and slide to adjust the threshold
 • Eyedropper: hold on the canvas to pick a color
 
 SELECT AND TRANSFORM

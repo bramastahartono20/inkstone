@@ -32,13 +32,13 @@ class ContributionIntegrationTest {
     @Test fun threeToolsRetainFullBrushProfilesIncludingFadeAfterReopen(){
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();val s=a.session!!
         for((i,tool) in listOf("Paint","Smudge","Erase").withIndex()){
-            s.tool=tool;s.choose(brushPresets.first{it.name==listOf("Soft Brush","Medium Blend","Fade Brush")[i]})
+            s.tool=tool;s.choose(brushPresets.first{it.name==listOf("Cloud Soft","Blend Medium","Fading Pen")[i]})
             s.size=31f+i;s.opacity=.7f-i*.1f;s.flow=.21f+i*.1f;s.pressureSize=.13f+i*.1f;s.pressureOpacity=.33f+i*.1f;s.fadeLength=170f+i*10
         }
         a.savePreferences();a.newCanvas(80,80);val restored=a.session!!
         for((i,tool) in listOf("Paint","Smudge","Erase").withIndex()){
             restored.tool=tool
-            assertEquals(listOf("Soft Brush","Medium Blend","Fade Brush")[i],restored.preset.name)
+            assertEquals(listOf("Cloud Soft","Blend Medium","Fading Pen")[i],restored.preset.name)
             assertEquals(31f+i,restored.size,0f);assertEquals(.7f-i*.1f,restored.opacity,0f)
             assertEquals(.21f+i*.1f,restored.flow,0f);assertEquals(.13f+i*.1f,restored.pressureSize,0f)
             assertEquals(.33f+i*.1f,restored.pressureOpacity,0f);assertEquals(170f+i*10,restored.fadeLength,0f)
@@ -46,8 +46,8 @@ class ContributionIntegrationTest {
     }
     @Test fun legacySavedPresetRestoresItsOwnFlowAndPressureDefaults(){
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get()
-        a.getSharedPreferences("studio",0).edit().putString("paint_brush_preset","Soft Brush").apply()
-        a.newCanvas(80,80);val s=a.session!!;val p=brushPresets.first{it.name=="Soft Brush"}
+        a.getSharedPreferences("studio",0).edit().putString("paint_brush_preset","Cloud Soft").apply()
+        a.newCanvas(80,80);val s=a.session!!;val p=brushPresets.first{it.name=="Cloud Soft"}
         assertEquals(p.flow,s.flow,0f);assertEquals(p.pressureSize,s.pressureSize,0f);assertEquals(p.pressureOpacity,s.pressureOpacity,0f);close(c)
     }
     @Test fun shortcutToggleUsesIndependentRasterAndVectorToolsAndIgnoresRepeats(){

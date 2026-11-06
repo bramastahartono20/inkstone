@@ -111,7 +111,7 @@ class VectorTest {
         val e=checkNotNull(a.vectorEditor);render(e,"feedback2-vector-portrait",400,820);assertEquals(88,e.canvas.top)
         assertTrue(checkNotNull(named(e,"History and save")).top>700)
         RuntimeEnvironment.setQualifiers("w1280dp-h800dp-land-mdpi");controller.configurationChange();render(e,"feedback2-vector-landscape",1280,800);assertEquals(44,e.canvas.top)
-        val gallery=checkNotNull(named(e,"Gallery")) as TextView;assertEquals("Gallery",gallery.text.toString());assertTrue(gallery.lineCount>0)
+        val gallery=checkNotNull(named(e,"Home")) as TextView;assertEquals("Home",gallery.text.toString());assertTrue(gallery.lineCount>0)
         val color=checkNotNull(named(e,"Colors"));val rect=android.graphics.Rect();assertTrue(color.getGlobalVisibleRect(rect));assertEquals(1280,rect.right)
         fun center(v:View):Float{val xy=IntArray(2);v.getLocationOnScreen(xy);return xy[0]+v.width/2f}
         assertEquals(640f,(center(checkNotNull(named(e,"Undo")))+center(checkNotNull(named(e,"Redo"))))/2,1f)

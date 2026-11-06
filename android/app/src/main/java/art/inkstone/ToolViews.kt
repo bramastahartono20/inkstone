@@ -28,19 +28,37 @@ class ToolIcon(context: Context, var symbol: String, private val action: () -> U
     private var selection:android.animation.ValueAnimator?=null
     private val p=Paint(Paint.ANTI_ALIAS_FLAG)
     private fun shape(block:Path.()->Unit)=Path().apply(block)
+    /** Scales [path] so its larger side is [size] icon units and centres it on the icon. */
+    private fun fit(path:Path,size:Float){
+        val b=android.graphics.RectF();path.computeBounds(b,true)
+        val k=size/maxOf(b.width(),b.height())
+        path.transform(Matrix().apply{postTranslate(-b.centerX(),-b.centerY());postScale(k,k)})
+    }
     private val brush=shape {
         moveTo(-2f,3f);cubicTo(0f,-1f,9f,-11f,13f,-14f);cubicTo(15f,-16f,15.6f,-15.2f,14f,-13f)
         cubicTo(11f,-8f,4f,0f,1f,4f);close()
         moveTo(-3f,4f);lineTo(0f,6f);cubicTo(-1f,10f,-5f,12f,-11f,13f)
         cubicTo(-7f,10f,-9f,7f,-3f,4f);close()
     }
+    // Smudge: a closed hand with the index finger pressed down and to the left.
     private val hand=shape {
-        moveTo(-10f,12f);lineTo(-6f,5f);quadTo(-8f,0f,-5f,-3f)
-        lineTo(-1f,-9f);quadTo(1f,-12f,3f,-10f);quadTo(4f,-9f,2f,-6f)
-        lineTo(1f,-4f);lineTo(6f,-10f);quadTo(8f,-12f,10f,-10f)
-        quadTo(11f,-8f,9f,-6f);lineTo(6f,-2f)
-        quadTo(12f,-5f,12f,-1f);quadTo(12f,1f,9f,4f)
-        lineTo(5f,8f);quadTo(3f,10f,0f,10f);lineTo(-3f,15f);close()
+        moveTo(-7f,-6f);cubicTo(-4f,-13f,6f,-15f,11f,-9f);cubicTo(13f,-6f,13f,-2f,12.5f,1f)
+        lineTo(11.5f,9f);quadTo(11f,12f,8.5f,11.5f);quadTo(6.5f,11f,6.5f,8.5f);lineTo(6.5f,3f)
+        lineTo(-2f,6f);quadTo(-5f,6.5f,-5f,3.5f);quadTo(-8f,3f,-7.5f,0f);quadTo(-10f,-1f,-9.5f,-3.5f)
+        quadTo(-9.5f,-5.5f,-7f,-6f);close()
+        // The index finger, a capsule from the fist down to the left.
+        op(Path().apply{addRoundRect(-2.8f,-11.1f,2.8f,11.1f,2.8f,2.8f,Path.Direction.CW);transform(Matrix().apply{postRotate(45f);postTranslate(-4f,7.75f)})},Path.Op.UNION)
+        fit(this,23f)
+    }
+    // Paint Mixing: a palette with three paint wells and a thumb notch, beside an upright brush.
+    private val palette=Path().apply{
+        addCircle(-3.5f,1f,10.5f,Path.Direction.CW)
+        op(Path().apply{addCircle(4f,6.5f,3.4f,Path.Direction.CW)},Path.Op.DIFFERENCE)
+        for((x,y) in listOf(-6f to -4.5f,-9.5f to 1.5f,-6.5f to 6.5f))op(Path().apply{addCircle(x,y,2.1f,Path.Direction.CW)},Path.Op.DIFFERENCE)
+        // The brush tip and handle.
+        moveTo(10f,-14.5f);cubicTo(12f,-12f,14f,-10f,13.5f,-7.5f);cubicTo(13f,-5f,7f,-5f,6.6f,-7.5f);cubicTo(6.4f,-10f,9f,-11f,10f,-14.5f);close()
+        moveTo(8.4f,-3.5f);lineTo(12.6f,-3.5f);lineTo(12f,12f);quadTo(10.5f,14.5f,9f,12f);close()
+        fit(this,23f)
     }
     private val wrench=shape {
         moveTo(-10f,10f);lineTo(1f,-1f);cubicTo(-1f,-6f,3f,-11f,8f,-10f)
@@ -66,7 +84,7 @@ class ToolIcon(context: Context, var symbol: String, private val action: () -> U
         val s=min(width,height)/48f
         c.save();c.translate(width/2f,height/2f);c.scale(s,s)
         p.style=Paint.Style.FILL
-        if(symbol in editingTools) {p.color=if(selectedAmount>.01f)Color.argb((255*selectedAmount).toInt(),44,166,235) else if(light)0x10000000 else 0x30000000;c.drawCircle(0f,0f,14f,p)}
+        if(symbol in editingTools) {p.color=if(selectedAmount>.01f)Color.argb((255*selectedAmount).toInt(),Color.red(StudioColors.accent),Color.green(StudioColors.accent),Color.blue(StudioColors.accent)) else if(light)0x10000000 else 0x30000000;c.drawCircle(0f,0f,14f,p)}
         if(symbol=="Paint Mixing"){
             p.style=Paint.Style.FILL;p.color=if(mixingEnabled)0x224fba87 else if(light)0x18778089 else 0x287e8790;c.drawCircle(0f,0f,19f,p)
             p.style=Paint.Style.STROKE;p.strokeWidth=1.5f;p.color=if(mixingEnabled)0x996bd49d.toInt() else if(light)0x66747f89 else 0x668b949e;c.drawCircle(0f,0f,18f,p);p.style=Paint.Style.FILL
@@ -80,7 +98,7 @@ class ToolIcon(context: Context, var symbol: String, private val action: () -> U
             "Rectangle"->{p.style=Paint.Style.STROKE;p.strokeWidth=2f;c.drawRect(-10f,-8f,10f,8f,p)}
             "Ellipse"->{p.style=Paint.Style.STROKE;p.strokeWidth=2f;c.drawOval(-10f,-8f,10f,8f,p)}
             "Nodes"->{p.style=Paint.Style.STROKE;c.drawPath(Path().apply{moveTo(-10f,8f);quadTo(-4f,-13f,10f,-6f)},p);p.style=Paint.Style.FILL;for(point in listOf(PointF(-10f,8f),PointF(-4f,-4f),PointF(10f,-6f)))c.drawRect(point.x-2,point.y-2,point.x+2,point.y+2,p)}
-            "Paint Mixing"->{p.style=Paint.Style.STROKE;p.strokeWidth=2f;c.drawOval(-12f,-10f,12f,11f,p);c.drawArc(-6f,-5f,7f,8f,25f,285f,false,p);p.style=Paint.Style.FILL;c.drawCircle(-6f,-5f,2f,p);c.drawCircle(2f,-7f,2f,p);c.drawCircle(8f,-2f,2f,p)}
+            "Paint Mixing"->c.drawPath(palette,p)
             "Paint"->c.drawPath(brush,p)
             "Smudge"->c.drawPath(hand,p)
             "Erase"->c.drawPath(eraser,p)
@@ -134,7 +152,7 @@ class VerticalSlider(context: Context, private val label: String, initial: Float
     init{isFocusable=true;isClickable=true;contentDescription=label}
     override fun onDraw(c:Canvas){val d=resources.displayMetrics.density
         p.color=StudioTheme.of(context).track;c.drawRoundRect(3*d,0f,width-3*d,height.toFloat(),StudioShape.CORNER_DP*d,StudioShape.CORNER_DP*d,p)
-        bookmark?.let{p.color=0xff4cb5ed.toInt();val y=height-10*d-it*(height-20*d);c.drawRect(2*d,y-d,7*d,y+d,p)}
+        bookmark?.let{p.color=StudioColors.accentBright;val y=height-10*d-it*(height-20*d);c.drawRect(2*d,y-d,7*d,y+d,p)}
         val y=thumbY;p.color=if(StudioTheme.of(context).light)0xff647689.toInt() else 0xffc8d2d6.toInt();c.drawRoundRect(2*d,y-6*d,width-2*d,y+6*d,StudioShape.CORNER_DP*d,StudioShape.CORNER_DP*d,p)
         p.style=Paint.Style.STROKE;p.strokeWidth=d;p.color=0xff879599.toInt();c.drawRoundRect(2*d,y-6*d,width-2*d,y+6*d,StudioShape.CORNER_DP*d,StudioShape.CORNER_DP*d,p);p.style=Paint.Style.FILL
     }
@@ -154,12 +172,27 @@ class VerticalSlider(context: Context, private val label: String, initial: Float
 }
 
 class BrushPreview(context:Context,val preset:BrushPreset,var chosen:Boolean=false,val eraser:Boolean=false):View(context){
+    /** Stamps an imported brush's own tip image along the preview path. */
+    private fun imageTipPreview(c:Canvas,w:Int,h:Int):Boolean{
+        val tip=BrushTips.load(preset.tip)?:return false
+        val shape=tip.shapeBitmap();val d=resources.displayMetrics.density
+        val ink=if(eraser)0xff273440.toInt()else if(StudioTheme.of(context).light)0xff374a5c.toInt()else 0xffedf3f4.toInt()
+        val paint=Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply{colorFilter=PorterDuffColorFilter(ink,PorterDuff.Mode.SRC_IN);alpha=(255*preset.opacity.coerceIn(.3f,1f)).roundToInt()}
+        val size=(h*.42f).coerceAtMost(28*d);val step=(size*preset.tipSpacing).coerceAtLeast(1.2f*d)
+        val x0=18*d;val x1=w-18*d;var x=x0
+        while(x<=x1){val t=(x-x0)/(x1-x0);val y=h*.62f-t*14*d+sin(t*2*Math.PI).toFloat()*5*d
+            val r=size*.5f*(.55f+.45f*sin(t*Math.PI).toFloat())
+            val angle=Math.toDegrees(atan2((-14*d+cos(t*2*Math.PI).toFloat()*10*Math.PI.toFloat()*d)/(x1-x0),1f).toDouble()).toFloat()*preset.tipFollow
+            c.save();c.rotate(angle,x,y);c.drawBitmap(shape,null,RectF(x-r,y-r,x+r,y+r),paint);c.restore();x+=step}
+        shape.recycle();return true
+    }
     private val p=Paint(Paint.ANTI_ALIAS_FLAG)
     private var stroke:Bitmap?=null
     init{minimumHeight=(70*resources.displayMetrics.density).toInt();contentDescription="${preset.name}, ${preset.group}${if(eraser)", eraser" else ""}"}
     override fun onSizeChanged(w:Int,h:Int,oldw:Int,oldh:Int){
         if(w<=0||h<=0)return
         stroke?.recycle();stroke=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888)
+        if(preset.kind==IMAGE_TIP_KIND && imageTipPreview(Canvas(stroke!!),w,h))return
         val nativeTip=runCatching{context.assets.open("brushes/tip-${preset.kind}.png").use{BitmapFactory.decodeStream(it)}}.getOrNull()
         if(nativeTip!=null && preset.colorMode=="Solid"){
             val c=Canvas(stroke!!);val ink=if(eraser)0xff273440.toInt()else if(StudioTheme.of(context).light)0xff374a5c.toInt()else 0xffedf3f4.toInt()
@@ -192,7 +225,7 @@ class BrushPreview(context:Context,val preset:BrushPreset,var chosen:Boolean=fal
         if(eraser){p.color=0xffc6d1d7.toInt();c.drawRoundRect(4*d,24*d,width-4*d,height-4*d,StudioShape.CORNER_DP*d,StudioShape.CORNER_DP*d,p)}
         stroke?.let{if(StudioTheme.of(context).light && chosen && preset.colorMode=="Solid")p.colorFilter=PorterDuffColorFilter(Color.WHITE,PorterDuff.Mode.SRC_IN);c.drawBitmap(it,0f,0f,p);p.colorFilter=null}
         p.color=if(chosen)Color.WHITE else StudioTheme.of(context).text;p.textSize=11*d;p.typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL);c.drawText(preset.name,7*d,15*d,p)
-        if(chosen){p.style=Paint.Style.STROKE;p.strokeWidth=1.5f*d;p.color=0xff8bd7ff.toInt();c.drawRoundRect(d,d,width-d,height-d,(StudioShape.CORNER_DP-1)*d,(StudioShape.CORNER_DP-1)*d,p);p.style=Paint.Style.FILL}
+        if(chosen){p.style=Paint.Style.STROKE;p.strokeWidth=1.5f*d;p.color=StudioColors.accentBright;c.drawRoundRect(d,d,width-d,height-d,(StudioShape.CORNER_DP-1)*d,(StudioShape.CORNER_DP-1)*d,p);p.style=Paint.Style.FILL}
     }
 }
 

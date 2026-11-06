@@ -52,7 +52,7 @@ class Preview019Test{
     @Test fun pressingBarrelButtonMidStrokeUsesWideEraserAndKeepsOneUndo(){
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(320,240,visible=false);val e=a.editor!!;val s=e.session
         s.command("fill",JSONObject().put("color",0xffff0000L));until{s.info.optInt("undo")==1}
-        s.tool="Erase";s.choose(brushPresets.first{it.name=="Studio Pen"});s.size=40f;s.pressureSize=0f;s.flow=1f;s.eraserHardness=1f;s.opacity=1f
+        s.tool="Erase";s.choose(brushPresets.first{it.name=="Ink Pen"});s.size=40f;s.pressureSize=0f;s.flow=1f;s.eraserHardness=1f;s.opacity=1f
         s.tool="Paint";s.size=4f;s.pressureSize=0f;s.color=Color.BLUE;s.stabilization=0f;s.penOnly=true
         layout(e,"preview019-stylus-before")
         fun point(x:Float,y:Float)=e.canvas.transformViewPoint(x,y).apply{offset(e.canvas.left.toFloat(),e.canvas.top.toFloat())}
@@ -97,7 +97,7 @@ class Preview019Test{
     }
     @Test fun fadePresetReachesNativeEngineAndResetsOnNextStroke(){
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(640,160,visible=false);val s=a.session!!
-        s.choose(brushPresets.first{it.name=="Fade Brush"});s.fadeLength=300f;s.stabilization=0f;s.color=Color.BLUE
+        s.choose(brushPresets.first{it.name=="Fading Pen"});s.fadeLength=300f;s.stabilization=0f;s.color=Color.BLUE
         s.stroke(0,floatArrayOf(20f,60f,1f,0f));s.stroke(2,floatArrayOf(620f,60f,1f,0f));assertTrue(Color.alpha(pick(s,35,60))>0);assertTrue(Color.alpha(pick(s,400,60))>0);assertTrue(Color.alpha(pick(s,600,60))<Color.alpha(pick(s,35,60)))
         s.stroke(0,floatArrayOf(20f,120f,1f,0f));s.stroke(2,floatArrayOf(620f,120f,1f,0f));assertTrue(Color.alpha(pick(s,35,120))>0)
         layout(a.editor!!,"preview019-fade-strokes");done(c)

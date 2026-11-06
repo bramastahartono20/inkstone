@@ -27,7 +27,7 @@ internal class ColorDropController(
             if(filling){
                 val left=width*.24f;val right=width*.76f;val top=canvas.top+12*d
                 p.style=Paint.Style.FILL;p.color=0xee171717.toInt();c.drawRoundRect(left-14*d,top,right+14*d,top+57*d,12*d,12*d,p)
-                p.color=Color.WHITE;p.textSize=14*d;p.textAlign=Paint.Align.CENTER;c.drawText("ColorDrop Threshold ${(threshold*100).roundToInt()}%",width/2f,top+23*d,p)
+                p.color=Color.WHITE;p.textSize=14*d;p.textAlign=Paint.Align.CENTER;c.drawText("Drop Fill threshold ${(threshold*100).roundToInt()}%",width/2f,top+23*d,p)
                 p.color=0xff555555.toInt();c.drawRoundRect(left,top+36*d,right,top+40*d,2*d,2*d,p)
                 p.color=StudioColors.accent;c.drawRoundRect(left,top+36*d,left+(right-left)*threshold,top+40*d,2*d,2*d,p)
             }

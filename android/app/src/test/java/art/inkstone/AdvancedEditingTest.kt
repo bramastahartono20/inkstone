@@ -91,7 +91,7 @@ class AdvancedEditingTest{
         s.tool="Erase";s.choose(chosen[0]);assertEquals(1,RecentBrushes(a).list("Erase").size);assertEquals(4,RecentBrushes(a).list("Paint").size);s.tool="Paint"
         layout(e,"brush-scroll-before");click(e,"Paint");layout(e,"brush-scroll-open")
         val scroll=e.findViewWithTag<ScrollView>("brush-categories-scroll");scroll.scrollTo(0,160);val before=scroll.scrollY
-        click(e,"Painting");layout(e,"brush-scroll-after");assertSame(scroll,e.findViewWithTag<ScrollView>("brush-categories-scroll"));assertEquals(before,scroll.scrollY)
+        click(e,"Paints");layout(e,"brush-scroll-after");assertSame(scroll,e.findViewWithTag<ScrollView>("brush-categories-scroll"));assertEquals(before,scroll.scrollY)
         click(e,"Recent");val count=e.findViewWithTag<ScrollView>("brush-presets-scroll").getChildAt(0) as LinearLayout;assertEquals(4,count.childCount)
         done(c)
     }

@@ -101,7 +101,7 @@ class AtlasBrushGroupTest {
         val image=doc.bitmap();val color=image.getPixel(16,16);image.recycle();assertTrue(Color.alpha(color) in 126..129);assertEquals(255,Color.red(color))
     }
     @Test fun rainbowProfileIsAppliedThroughTheAndroidStrokePipeline(){
-        val controller=Robolectric.buildActivity(MainActivity::class.java).setup();val a=controller.get();a.newCanvas(128,64);val s=a.session!!;s.choose(brushPresets.first{it.name=="Studio Pen"}.copy(colorMode="Rainbow",colorLayout="Across"));s.size=8f;s.stabilization=0f;s.pressureSize=0f;s.currentBrush.colorCycle=96f
+        val controller=Robolectric.buildActivity(MainActivity::class.java).setup();val a=controller.get();a.newCanvas(128,64);val s=a.session!!;s.choose(brushPresets.first{it.name=="Ink Pen"}.copy(colorMode="Rainbow",colorLayout="Across"));s.size=8f;s.stabilization=0f;s.pressureSize=0f;s.currentBrush.colorCycle=96f
         s.stroke(0,floatArrayOf(8f,32f,1f,0f));s.stroke(1,floatArrayOf(112f,32f,1f,0f));s.stroke(2,floatArrayOf(112f,32f,1f,0f));var done=false
         s.command("info"){done=true};until{done && s.frameSerial>0};var first=0;var second=0;done=false
         s.command("pick",org.json.JSONObject().put("x",16).put("y",32)){first=it.getLong("color").toInt()};s.command("pick",org.json.JSONObject().put("x",48).put("y",32)){second=it.getLong("color").toInt();done=true};until{done};assertNotEquals(first,second)
@@ -124,7 +124,7 @@ class AtlasBrushGroupTest {
         controller.pause().stop().destroy();until{a.io.isTerminated}
     }
     @Test fun multicolorDialogEditsCombinationTipLayoutAndLengthAndRestoresThem(){
-        val controller=Robolectric.buildActivity(MainActivity::class.java).setup();val a=controller.get();a.newCanvas(128,80);val s=a.session!!;s.choose(brushPresets.first{it.name=="Studio Pen"}.copy(colorMode="Rainbow",colorLayout="Across"))
+        val controller=Robolectric.buildActivity(MainActivity::class.java).setup();val a=controller.get();a.newCanvas(128,80);val s=a.session!!;s.choose(brushPresets.first{it.name=="Ink Pen"}.copy(colorMode="Rainbow",colorLayout="Across"))
         fun find(v:View,label:String):View?{if(v.contentDescription==label)return v;if(v is ViewGroup)for(i in 0 until v.childCount)find(v.getChildAt(i),label)?.let{return it};return null}
         val root=a.editor!!;root.multicolorSettings();layout(root);val body=root
         find(body,"Custom")!!.performClick();find(body,"Adjust color cycle  ⌄")!!.performClick();find(body,"Bristle strands")!!.performClick();find(body,"Brush tip Bristle")!!.performClick()
@@ -138,7 +138,7 @@ class AtlasBrushGroupTest {
     }
     @Test fun multicolorTipsProduceWidthVariationThroughTheRealStrokePipeline(){
         val controller=Robolectric.buildActivity(MainActivity::class.java).setup();val a=controller.get();a.newCanvas(720,480);val s=a.session!!
-        for((index,name) in listOf("Wide Bristle","Pastel Threads","Chisel Marker").withIndex()){
+        for((index,name) in listOf("House Brush","Threads","Chisel Tip").withIndex()){
             s.choose(brushPresets.first{it.name==name}.copy(colorMode="Rainbow",colorLayout=if(index==2)"Across"else"Bristles"));s.size=66f;s.pressureSize=0f;s.stabilization=0f;s.currentBrush.colorCycle=1600f
             val y=70f+index*140f;s.stroke(0,floatArrayOf(50f,y,1f,0f));s.stroke(1,floatArrayOf(250f,y,1f,0f,400f,y+45,1f,0f,640f,y,1f,0f));s.stroke(2,floatArrayOf(640f,y,1f,0f))
         }
@@ -149,7 +149,7 @@ class AtlasBrushGroupTest {
     @Test fun mixerIsSeparateAndLibraryUsesEditorPanels(){
         val controller=Robolectric.buildActivity(MainActivity::class.java).setup();val a=controller.get();a.newCanvas(120,100);val root=a.editor!!;layout(root)
         fun find(v:View,name:String):View?{if(v.contentDescription==name || (v is android.widget.TextView && v.text.toString()==name))return v;if(v is ViewGroup)for(i in 0 until v.childCount)find(v.getChildAt(i),name)?.let{return it};return null}
-        find(root,"Paint Mixing")!!.performClick();render(root,"preview14-paint-mixing");assertTrue(a.session!!.paintMixingEnabled);assertEquals("Paint",a.session!!.tool);assertNotNull(find(root,"Color pickup"));assertTrue(find(root,"Wetness") is BrushRange);a.session!!.choose(brushPresets.first{it.name=="Water Wash"});assertTrue(a.session!!.paintMixingEnabled);assertEquals(.65f,a.session!!.paintBrush.wetMix,.001f)
+        find(root,"Paint Mixing")!!.performClick();render(root,"preview14-paint-mixing");assertTrue(a.session!!.paintMixingEnabled);assertEquals("Paint",a.session!!.tool);assertNotNull(find(root,"Color pickup"));assertTrue(find(root,"Wetness") is BrushRange);a.session!!.choose(brushPresets.first{it.name=="Clear Wash"});assertTrue(a.session!!.paintMixingEnabled);assertEquals(.65f,a.session!!.paintBrush.wetMix,.001f)
         root.dismissPanel();find(root,"Paint")!!.performClick();assertFalse(a.session!!.paintMixingEnabled);find(root,"Add")!!.performClick();assertNotNull(find(root,"New category"));render(root,"preview14-library-menu");find(root,"Brush Studio")!!.performClick();assertNotNull(find(root,"Multicolor settings"));assertTrue(find(root,"Flow") is BrushRange);render(root,"preview14-brush-studio")
         assertFalse(brushPresets.any{it.name.startsWith("Rainbow ")})
         controller.pause().stop().destroy();until{a.io.isTerminated}

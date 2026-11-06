@@ -80,7 +80,7 @@ class TutorialExportExperienceTest {
     }
     @Test fun newBrushFamiliesAreDistinctAndCustomCopiesKeepTheirNativeTip(){
         val context=RuntimeEnvironment.getApplication();val library=BrushLibrary(context)
-        for(group in listOf("Materials","Vintage","Organic")){
+        for(group in listOf("Surfaces","Retro","Botanical")){
             val presets=brushPresets.filter{it.group==group};assertTrue(presets.size>=3);assertTrue(presets.map{it.kind}.distinct().size>=3);assertTrue(presets.all{it.kind in 32..42})
             presets.forEach{p->val custom=library.copy(p);assertEquals(p.kind,BrushLibrary(context).custom().first{it.customId==custom.customId}.kind)}
         }

@@ -100,7 +100,7 @@ internal class TutorialPreview(private val activity:MainActivity,private val top
             val next="atlas-pan-${(index+1).coerceAtMost(12)}";val before=at(scene,"Canvas center");val after=at(next,"Canvas center");val dx=after.x-before.x
             c.drawColor(StudioTheme.of(activity).workspace);c.drawBitmap(image(next),-dx*(1-fraction),0f,paint);c.drawBitmap(image,dx*fraction,0f,paint)
         }else c.drawBitmap(image,0f,0f,paint)
-        fun finger(p:PointF){paint.style=Paint.Style.FILL;paint.color=0x552a9ff0;c.drawCircle(p.x,p.y,17f/scale,paint);paint.style=Paint.Style.STROKE;paint.color=Color.WHITE;paint.strokeWidth=2f/scale;c.drawCircle(p.x,p.y,17f/scale,paint)}
+        fun finger(p:PointF){paint.style=Paint.Style.FILL;paint.color=0x5522b3a3;c.drawCircle(p.x,p.y,17f/scale,paint);paint.style=Paint.Style.STROKE;paint.color=Color.WHITE;paint.strokeWidth=2f/scale;c.drawCircle(p.x,p.y,17f/scale,paint)}
         fun tap(p:PointF){finger(p);paint.color=StudioColors.accent;paint.strokeWidth=2f/scale;c.drawCircle(p.x,p.y,(19+8*sin(phase*PI).toFloat())/scale,paint)}
         when(action){
             "drop"->{
@@ -130,7 +130,7 @@ internal class TutorialPreview(private val activity:MainActivity,private val top
             }
             "export"->{if(scene=="video" || scene=="video-minute")tap(at(scene,if(phase<.45f)"Time-lapse length 1 min"else"Export time-lapse"))}
             else->{if(!open)tap(at("workspace",target()))else{
-                val key=when(menu){"layers"->"Add";"mixing"->if(phase<.5f)"Mixing enabled"else"Color pickup";"colors"->"Color picker. Outer ring selects hue; inner area selects saturation and brightness.";"video","video-off"->"Time-lapse recording";"group-blend"->"Opacity";"brushes"->"Studio Pen, Inking";else->""}
+                val key=when(menu){"layers"->"Add";"mixing"->if(phase<.5f)"Mixing enabled"else"Color pickup";"colors"->"Color picker. Outer ring selects hue; inner area selects saturation and brightness.";"video","video-off"->"Time-lapse recording";"group-blend"->"Opacity";"brushes"->"Ink Pen, Pens";else->""}
                 if(key.isNotEmpty())tap(at(menu,key,focus))
             }}
         }

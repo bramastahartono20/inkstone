@@ -80,6 +80,17 @@ class StoreScreenshotsTest{
         val s2=a.session;c.pause().stop().destroy();until{s2==null || s2.fullyClosed}
     }
 
+    // The same tablet views on an empty white canvas, for posts where the interface should stand alone.
+    @Test fun blankTabletScreenshots(){
+        skipWelcome();val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get()
+        a.newCanvas(1600,1200);val e=a.editor!!;val s=e.session;settle(s);val (w,h)=2560 to 1440
+        render(e,"blank/tablet-1-canvas",w,h)
+        click(e,"Paint");render(e,"blank/tablet-2-brushes",w,h)
+        e.dismissPanel();click(e,"Layers");until{s.layerThumbnails.isNotEmpty()};render(e,"blank/tablet-3-layers",w,h)
+        e.dismissPanel();click(e,"Color");render(e,"blank/tablet-4-colors",w,h)
+        e.dismissPanel();c.pause().stop().destroy();until{s.fullyClosed}
+    }
+
     @Test fun phoneScreenshots(){
         RuntimeEnvironment.setQualifiers("w360dp-h640dp-xxhdpi");skipWelcome()
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get()

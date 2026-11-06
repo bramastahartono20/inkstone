@@ -69,7 +69,7 @@ class GalleryLibraryTest {
         assertTrue(gallery.handleBack());assertNotNull(find(gallery,"Stack Studies, 1 artworks"))
         find(gallery,"Stack Studies, 1 artworks")!!.performLongClick();ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null,0,0)
         val dialog=ShadowAlertDialog.getLatestAlertDialog();fun edit(v:View):EditText?{if(v is EditText)return v;if(v is ViewGroup)for(i in 0 until v.childCount)edit(v.getChildAt(i))?.let{return it};return null}
-        edit(dialog.window!!.decorView)!!.setText("Paintings");dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();shadowOf(Looper.getMainLooper()).idle();assertEquals("Paintings",s.stacks().first{it.id==stack}.name);click("Stack Paintings, 1 artworks");assertNotNull(find(gallery,"Back to gallery"));assertNotNull(find(gallery,"Zulu"));render(gallery,"gallery-library-stack")
+        edit(dialog.window!!.decorView)!!.setText("Paintings");dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();shadowOf(Looper.getMainLooper()).idle();assertEquals("Paintings",s.stacks().first{it.id==stack}.name);click("Stack Paintings, 1 artworks");assertNotNull(find(gallery,"Back to Home"));assertNotNull(find(gallery,"Zulu"));render(gallery,"gallery-library-stack")
         assertTrue(gallery.handleBack());assertNull(find(gallery,"Outside groups"))
         find(gallery,"Artwork options for Alpha")!!.performClick();ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null,3,3);val tags=ShadowAlertDialog.getLatestAlertDialog();edit(tags.window!!.decorView)!!.setText("");tags.getButton(AlertDialog.BUTTON_POSITIVE).performClick();shadowOf(Looper.getMainLooper()).idle();assertTrue(s.list().first{it.id==first}.tags.isEmpty())
         val session=a.session;c.pause().stop().destroy();until{session==null || session.fullyClosed};until{a.io.isTerminated}
@@ -88,7 +88,7 @@ class GalleryLibraryTest {
         find(gallery,"Stack One, 1 artworks")!!.performClick();render(gallery,"gallery-drag-open-stack")
         drop(find(gallery,"Drop artwork into Two")!!);assertEquals(two,store.list().first{it.id==id}.stackId);assertTrue(gallery.handleBack());render(gallery,"gallery-drag-other-stack")
         find(gallery,"Stack Two, 1 artworks")!!.performClick();render(gallery,"gallery-drag-return-root")
-        drop(find(gallery,"Drop artwork into Gallery")!!);assertNull(store.list().first{it.id==id}.stackId);assertEquals(listOf("Practice"),store.list().first{it.id==id}.tags)
+        drop(find(gallery,"Drop artwork into Home")!!);assertNull(store.list().first{it.id==id}.stackId);assertEquals(listOf("Practice"),store.list().first{it.id==id}.tags)
         assertTrue(gallery.handleBack());assertNotNull(find(gallery,"Sketch"))
         val session=a.session;c.pause().stop().destroy();until{session==null || session.fullyClosed};until{a.io.isTerminated}
     }

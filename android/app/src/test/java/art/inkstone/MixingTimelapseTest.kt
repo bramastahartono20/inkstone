@@ -75,7 +75,7 @@ class MixingTimelapseTest{
 
     @Test fun mixingUsesSelectedBrushAndHasAnOnOffRing(){
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(128,128);val e=a.editor!!;val s=e.session
-        val chosen=brushPresets.first{it.name=="Water Wash"};s.choose(chosen);click(e,"Paint Mixing")
+        val chosen=brushPresets.first{it.name=="Clear Wash"};s.choose(chosen);click(e,"Paint Mixing")
         assertEquals(chosen,s.preset);assertEquals(chosen.kind,s.paintBrush.kind);assertNull(find(e,"Brush tip"))
         val icon=find(e,"Paint Mixing") as ToolIcon;assertTrue(icon.mixingEnabled)
         val sampleIcon=ToolIcon(a,"Paint Mixing"){}.apply{mixingEnabled=true;layout(0,0,48,48)};val b=Bitmap.createBitmap(48,48,Bitmap.Config.ARGB_8888);sampleIcon.draw(Canvas(b));val green=b.getPixel(42,24);assertTrue(Color.green(green)>Color.red(green));b.recycle()

@@ -25,7 +25,7 @@ class FeedbackColorTest{
     private fun render(v:View,name:String){layout(v);val b=Bitmap.createBitmap(1280,800,Bitmap.Config.ARGB_8888);v.draw(Canvas(b));File(System.getProperty("inkstone.artifacts"),"feedback13-$name.png").outputStream().use{b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle()}
     private fun event(view:View,action:Int,p:PointF,tool:Int=MotionEvent.TOOL_TYPE_FINGER){val prop=MotionEvent.PointerProperties().apply{id=0;toolType=tool};val xy=MotionEvent.PointerCoords().apply{x=p.x;y=p.y;pressure=1f};val time=android.os.SystemClock.uptimeMillis();val e=MotionEvent.obtain(time,time,action,1,arrayOf(prop),arrayOf(xy),0,0,1f,1f,0,0,if(tool==MotionEvent.TOOL_TYPE_STYLUS)InputDevice.SOURCE_STYLUS else if(tool==MotionEvent.TOOL_TYPE_MOUSE)InputDevice.SOURCE_MOUSE else InputDevice.SOURCE_TOUCHSCREEN,0);if(action in listOf(MotionEvent.ACTION_HOVER_ENTER,MotionEvent.ACTION_HOVER_EXIT,MotionEvent.ACTION_HOVER_MOVE))view.onHoverEvent(e) else view.onTouchEvent(e);e.recycle()}
     @Test fun galleryRemainsNormalAndOnlyPenHoverGlows(){
-        val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(120,100);val root=a.editor!!;layout(root);val gallery=find(root,"Gallery") as GalleryButton
+        val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(120,100);val root=a.editor!!;layout(root);val gallery=find(root,"Home") as GalleryButton
         assertFalse(gallery.typeface.isBold);event(gallery,MotionEvent.ACTION_HOVER_ENTER,PointF(20f,20f),MotionEvent.TOOL_TYPE_MOUSE);assertFalse(gallery.penHovered)
         event(gallery,MotionEvent.ACTION_HOVER_ENTER,PointF(20f,20f),MotionEvent.TOOL_TYPE_STYLUS);shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(250));assertTrue(gallery.penHovered);assertTrue(gallery.shadowRadius>0);assertFalse(gallery.typeface.isBold)
         event(gallery,MotionEvent.ACTION_HOVER_EXIT,PointF(20f,20f),MotionEvent.TOOL_TYPE_STYLUS);shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(250));assertFalse(gallery.penHovered);assertEquals(0f,gallery.shadowRadius,.01f)
@@ -34,7 +34,7 @@ class FeedbackColorTest{
     @Test fun largeFontsDoNotClipGalleryHeadingOrApplyButtonInEitherEditor(){
         RuntimeEnvironment.setFontScale(1.7f)
         val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(120,100);val root=a.editor!!;layout(root);root.backgroundSettings();layout(root)
-        fun check(v:View){val gallery=find(v,"Gallery") as GalleryButton;assertTrue(gallery.width>=gallery.requiredWidth);assertEquals(1,gallery.lineCount);assertFalse(gallery.typeface.isBold)
+        fun check(v:View){val gallery=find(v,"Home") as GalleryButton;assertTrue(gallery.width>=gallery.requiredWidth);assertEquals(1,gallery.lineCount);assertFalse(gallery.typeface.isBold)
             val save=(find(v,"Save artwork")?:find(v,"Save")) as TextView;assertTrue(save.width>=kotlin.math.ceil(save.paint.measureText(save.text.toString())).toInt()+save.paddingLeft+save.paddingRight)
             val title=find(v,"Background colour") as TextView;assertEquals(title.text.length,title.layout.getLineEnd(title.lineCount-1));assertTrue(title.height>=title.layout.height)
             val apply=find(v,"Apply color") as TextView;assertEquals(1,apply.lineCount);assertEquals(apply.text.length,apply.layout.getLineEnd(0));val hex=find(v,"Background hex color") as EditText

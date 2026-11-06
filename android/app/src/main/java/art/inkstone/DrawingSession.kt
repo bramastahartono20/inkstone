@@ -11,74 +11,77 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 data class BrushPreset(val name: String, val group: String, val kind: Int, val size: Float,
-    val flow: Float = 1f, val pressureSize: Float = .8f, val pressureOpacity: Float = 0f, val fadeLength:Float=0f,val customId:String="",val opacity:Float=1f,val stabilization:Float=.12f,val hardness:Float=1f,val colorMode:String="Solid",val colorCycle:Float=600f,val wetMix:Float=0f,val palette:List<Int> = emptyList(),val colorLayout:String="Along",val wetPickup:Float=.35f,val wetness:Float=.5f)
+    val flow: Float = 1f, val pressureSize: Float = .8f, val pressureOpacity: Float = 0f, val fadeLength:Float=0f,val customId:String="",val opacity:Float=1f,val stabilization:Float=.12f,val hardness:Float=1f,val colorMode:String="Solid",val colorCycle:Float=600f,val wetMix:Float=0f,val palette:List<Int> = emptyList(),val colorLayout:String="Along",val wetPickup:Float=.35f,val wetness:Float=.5f,
+    /** Image tip id in [BrushTips] and its settings, for kind 43 brushes. */
+    val tip:String="",val tipSpacing:Float=.1f,val tipFollow:Float=0f,val tipRotation:Float=0f,val tipJitter:Float=0f,val grainScale:Float=1f,
+    val tipSizeJitter:Float=0f,val tipOpacityJitter:Float=0f,val tipScatter:Float=0f,val grainRolling:Boolean=false,val tipSpeedOpacity:Float=0f,val tipDynamics:TipDynamics=TipDynamics())
 
 val brushPresets = listOf(
-    BrushPreset("Studio Pen", "Inking", 0, 12f),
-    BrushPreset("Pastel Threads","Artistic",14,64f,.8f,.2f,.1f,colorMode="Palette",palette=listOf(0xffd78a99.toInt(),0xffe7c686.toInt(),0xff8bc6b6.toInt(),0xff939fd0.toInt()),colorLayout="Bristles"),
-    BrushPreset("Palette Ribbon","Artistic",7,45f,pressureSize=.2f,colorMode="Palette",palette=listOf(0xffed7768.toInt(),0xffebc66a.toInt(),0xff6096cc.toInt())),
-    BrushPreset("Wet Paint","Painting",11,55f,.7f,.35f,.2f,wetMix=.45f),
-    BrushPreset("Fade Brush", "Inking", 0, 28f, pressureSize=0f,fadeLength=150f),
-    BrushPreset("Technical Pen", "Inking", 0, 4f, pressureSize = .35f),
-    BrushPreset("Dry Ink", "Inking", 3, 18f, .9f),
-    BrushPreset("Graphite", "Sketching", 1, 9f, .8f, .7f, .7f),
-    BrushPreset("Soft Pencil", "Sketching", 1, 22f, .65f, .5f, .8f),
-    BrushPreset("Compressed Charcoal", "Charcoals", 3, 48f, .8f, .55f, .5f),
-    BrushPreset("Willow", "Charcoals", 3, 14f, .65f, .9f, .65f),
-    BrushPreset("Round Paint", "Painting", 41, 42f, .55f, .7f, .2f),
-    BrushPreset("Water Wash", "Painting", 4, 90f, .8f, .4f, .6f),
-    BrushPreset("Flat Brush", "Painting", 42, 55f, .7f, .6f, .2f),
-    BrushPreset("Soft Airbrush", "Airbrushing", 2, 110f, .7f, .25f, .7f),
-    BrushPreset("Fine Airbrush", "Airbrushing", 2, 32f, .9f, .4f, .5f),
-    BrushPreset("Monoline", "Calligraphy", 0, 16f, pressureSize = 0f),
-    BrushPreset("Flat Lettering", "Calligraphy", 7, 26f, pressureSize = .9f)
+    BrushPreset("Ink Pen", "Pens", 0, 12f),
+    BrushPreset("Threads","Expressive",14,64f,.8f,.2f,.1f,colorMode="Palette",palette=listOf(0xffd78a99.toInt(),0xffe7c686.toInt(),0xff8bc6b6.toInt(),0xff939fd0.toInt()),colorLayout="Bristles"),
+    BrushPreset("Ribbon","Expressive",7,45f,pressureSize=.2f,colorMode="Palette",palette=listOf(0xffed7768.toInt(),0xffebc66a.toInt(),0xff6096cc.toInt())),
+    BrushPreset("Wet Mix","Paints",11,55f,.7f,.35f,.2f,wetMix=.45f),
+    BrushPreset("Fading Pen", "Pens", 0, 28f, pressureSize=0f,fadeLength=150f),
+    BrushPreset("Drafting Pen", "Pens", 0, 4f, pressureSize = .35f),
+    BrushPreset("Dry Nib", "Pens", 3, 18f, .9f),
+    BrushPreset("Graphite Stick", "Pencils", 1, 9f, .8f, .7f, .7f),
+    BrushPreset("Soft Lead", "Pencils", 1, 22f, .65f, .5f, .8f),
+    BrushPreset("Pressed Charcoal", "Charcoal", 3, 48f, .8f, .55f, .5f),
+    BrushPreset("Twig Charcoal", "Charcoal", 3, 14f, .65f, .9f, .65f),
+    BrushPreset("Round Sable", "Paints", 41, 42f, .55f, .7f, .2f),
+    BrushPreset("Clear Wash", "Paints", 4, 90f, .8f, .4f, .6f),
+    BrushPreset("Flat Shader", "Paints", 42, 55f, .7f, .6f, .2f),
+    BrushPreset("Mist Soft", "Airbrush", 2, 110f, .7f, .25f, .7f),
+    BrushPreset("Mist Fine", "Airbrush", 2, 32f, .9f, .4f, .5f),
+    BrushPreset("Even Line", "Lettering", 0, 16f, pressureSize = 0f),
+    BrushPreset("Flat Nib", "Lettering", 7, 26f, pressureSize = .9f)
 ) + additionalPresets()
 
-val brushCategories=listOf("Recent","Sketching","Inking","Drawing","Painting","Artistic","Calligraphy","Airbrushing","Textures","Abstract","Charcoals","Elements","Spraypaints","Materials","Vintage","Luminance","Industrial","Organic","Water","Imported")
+val brushCategories=listOf("Recent","Pencils","Pens","Lines","Paints","Expressive","Lettering","Airbrush","Texture","Shapes","Charcoal","Nature","Spray","Surfaces","Retro","Glow","Grit","Botanical","Watercolour","Imported")
 private fun additionalPresets():List<BrushPreset> {
     val air=listOf(
-        BrushPreset("Soft Brush","Airbrushing",2,120f,.8f,.15f,.35f),
-        BrushPreset("Medium Brush","Airbrushing",8,100f,.8f,.2f,.3f),
-        BrushPreset("Medium Hard Brush","Airbrushing",9,90f,.8f,.2f,.25f),
-        BrushPreset("Hard Brush","Airbrushing",0,80f,1f,.25f,0f),
-        BrushPreset("Soft Blend","Airbrushing",2,140f,.25f,.1f,.15f),
-        BrushPreset("Medium Blend","Airbrushing",8,120f,.25f,.1f,.15f),
-        BrushPreset("Medium Hard Blend","Airbrushing",9,100f,.25f,.1f,.15f),
-        BrushPreset("Hard Blend","Airbrushing",0,80f,.18f,.1f,.1f),
-        BrushPreset("Medium Airbrush","Airbrushing",8,75f,.55f,.2f,.5f)
+        BrushPreset("Cloud Soft","Airbrush",2,120f,.8f,.15f,.35f),
+        BrushPreset("Cloud Medium","Airbrush",8,100f,.8f,.2f,.3f),
+        BrushPreset("Cloud Medium Firm","Airbrush",9,90f,.8f,.2f,.25f),
+        BrushPreset("Cloud Firm","Airbrush",0,80f,1f,.25f,0f),
+        BrushPreset("Blend Soft","Airbrush",2,140f,.25f,.1f,.15f),
+        BrushPreset("Blend Medium","Airbrush",8,120f,.25f,.1f,.15f),
+        BrushPreset("Blend Medium Firm","Airbrush",9,100f,.25f,.1f,.15f),
+        BrushPreset("Blend Firm","Airbrush",0,80f,.18f,.1f,.1f),
+        BrushPreset("Mist Medium","Airbrush",8,75f,.55f,.2f,.5f)
     )
     val originals=listOf(
-        BrushPreset("Expressive Line","Drawing",0,14f,1f,.9f),
-        BrushPreset("Chalk","Drawing",13,28f,.8f,.55f,.4f),
-        BrushPreset("Pastel","Drawing",14,38f,.8f,.35f,.3f),
-        BrushPreset("Bristle","Artistic",11,54f,.8f,.5f,.2f),
-        BrushPreset("Wide Bristle","Painting",11,90f,.65f,.35f,.2f),
-        BrushPreset("Opaque Round","Painting",0,70f,1f,.5f),
-        BrushPreset("Soft Glaze","Painting",2,160f,.3f,.15f,.3f),
-        BrushPreset("Chisel Marker","Inking",12,28f,.85f,.2f),
-        BrushPreset("Fine Liner","Inking",0,3f,1f,.1f),
-        BrushPreset("Soft Charcoal","Charcoals",13,65f,.65f,.5f,.5f),
-        BrushPreset("Rough Grain","Textures",14,75f,.65f,.4f,.4f),
-        BrushPreset("Broken Marks","Abstract",3,48f,.6f,.7f,.3f),
-        BrushPreset("Dust","Elements",10,130f,.6f,.1f,.4f),
-        BrushPreset("Fine Mist","Spraypaints",10,100f,.75f,.15f,.4f),
-        BrushPreset("Wide Spray","Spraypaints",10,220f,.6f,.1f,.3f),
-        BrushPreset("Dry Surface","Materials",33,60f,.7f,.4f,.3f),
-        BrushPreset("Faded Ink","Vintage",40,20f,.5f,.6f,.5f),
-        BrushPreset("Soft Glow","Luminance",2,160f,.45f,.2f,.5f),
-        BrushPreset("Hard Edge","Industrial",12,48f,1f,.1f),
-        BrushPreset("Soft Grain","Organic",35,65f,.55f,.5f,.3f),
-        BrushPreset("Diluted Wash","Water",4,130f,.6f,.3f,.5f),
-        BrushPreset("Soft Wash","Water",4,180f,.45f,.15f,.5f,wetMix=.45f,wetPickup=.3f,wetness=.65f),
-        BrushPreset("Linen Weave","Materials",32,85f,.8f,.25f,.2f),
-        BrushPreset("Leather Grain","Materials",34,90f,.8f,.3f,.2f),
-        BrushPreset("Etching","Vintage",38,45f,.75f,.2f,.2f),
-        BrushPreset("Halftone Print","Vintage",39,70f,.8f,.2f,.1f),
-        BrushPreset("Moss Stipple","Organic",36,85f,.85f,.3f,.2f),
-        BrushPreset("Leaf Scatter","Organic",37,110f,.8f,.15f,.2f),
-        BrushPreset("Dry Bristle","Painting",42,70f,.8f,.3f,.15f),
-        BrushPreset("Gouache","Painting",41,65f,.9f,.35f,.15f),
-        BrushPreset("Broad Lettering","Calligraphy",7,65f,.8f,.7f)
+        BrushPreset("Loose Line","Lines",0,14f,1f,.9f),
+        BrushPreset("Sidewalk Chalk","Lines",13,28f,.8f,.55f,.4f),
+        BrushPreset("Pastel Stick","Lines",14,38f,.8f,.35f,.3f),
+        BrushPreset("Hog Bristle","Expressive",11,54f,.8f,.5f,.2f),
+        BrushPreset("House Brush","Paints",11,90f,.65f,.35f,.2f),
+        BrushPreset("Opaque Sable","Paints",0,70f,1f,.5f),
+        BrushPreset("Thin Glaze","Paints",2,160f,.3f,.15f,.3f),
+        BrushPreset("Chisel Tip","Pens",12,28f,.85f,.2f),
+        BrushPreset("Fineliner","Pens",0,3f,1f,.1f),
+        BrushPreset("Smoky Charcoal","Charcoal",13,65f,.65f,.5f,.5f),
+        BrushPreset("Rough Tooth","Texture",14,75f,.65f,.4f,.4f),
+        BrushPreset("Scatter Marks","Shapes",3,48f,.6f,.7f,.3f),
+        BrushPreset("Stardust","Nature",10,130f,.6f,.1f,.4f),
+        BrushPreset("Fine Spray","Spray",10,100f,.75f,.15f,.4f),
+        BrushPreset("Wide Can","Spray",10,220f,.6f,.1f,.3f),
+        BrushPreset("Dry Plaster","Surfaces",33,60f,.7f,.4f,.3f),
+        BrushPreset("Old Ink","Retro",40,20f,.5f,.6f,.5f),
+        BrushPreset("Halo","Glow",2,160f,.45f,.2f,.5f),
+        BrushPreset("Steel Edge","Grit",12,48f,1f,.1f),
+        BrushPreset("Pollen","Botanical",35,65f,.55f,.5f,.3f),
+        BrushPreset("Pale Wash","Watercolour",4,130f,.6f,.3f,.5f),
+        BrushPreset("Wet Wash","Watercolour",4,180f,.45f,.15f,.5f,wetMix=.45f,wetPickup=.3f,wetness=.65f),
+        BrushPreset("Linen","Surfaces",32,85f,.8f,.25f,.2f),
+        BrushPreset("Leather","Surfaces",34,90f,.8f,.3f,.2f),
+        BrushPreset("Etched Line","Retro",38,45f,.75f,.2f,.2f),
+        BrushPreset("Halftone","Retro",39,70f,.8f,.2f,.1f),
+        BrushPreset("Moss","Botanical",36,85f,.85f,.3f,.2f),
+        BrushPreset("Falling Leaves","Botanical",37,110f,.8f,.15f,.2f),
+        BrushPreset("Scumble Bristle","Paints",42,70f,.8f,.3f,.15f),
+        BrushPreset("Matte Gouache","Paints",41,65f,.9f,.35f,.15f),
+        BrushPreset("Broad Nib","Lettering",7,65f,.8f,.7f)
     )
     return air+originals
 }
@@ -97,7 +100,7 @@ class DrawingSession(width: Int, height: Int) : Closeable {
     internal var onToolChange:()->Unit={}
     private val dropGeneration=AtomicLong(0)
     private val inputLock=Any()
-    private data class StrokeSettings(val kind:Int,val color:Int,val size:Float,val opacity:Float,val flow:Float,val smooth:Float,val pressureSize:Float,val pressureOpacity:Float,val fadeLength:Float,val sampleStride:Int=4,val effects:String="{}")
+    private data class StrokeSettings(val kind:Int,val color:Int,val size:Float,val opacity:Float,val flow:Float,val smooth:Float,val pressureSize:Float,val pressureOpacity:Float,val fadeLength:Float,val sampleStride:Int=4,val effects:String="{}",val tip:TipSettings?=null)
     private class MoveBatch(val settings:StrokeSettings,val chunks:MutableList<FloatArray>,var size:Int)
     private var pendingMoves:MoveBatch?=null
     private val main = Handler(Looper.getMainLooper())
@@ -133,10 +136,13 @@ class DrawingSession(width: Int, height: Int) : Closeable {
         var size=preset.size;var opacity=1f;var flow=preset.flow
         var pressureSize=preset.pressureSize;var pressureOpacity=preset.pressureOpacity;var fadeLength=preset.fadeLength
         var kind=preset.kind;var colorLayout=preset.colorLayout;var colorMode=preset.colorMode;var colorCycle=preset.colorCycle;var wetMix=preset.wetMix;var wetPickup=preset.wetPickup;var wetness=preset.wetness;var palette=preset.palette
+        var tipSpacing=preset.tipSpacing;var tipFollow=preset.tipFollow;var tipRotation=preset.tipRotation;var tipJitter=preset.tipJitter;var grainScale=preset.grainScale
+        var tipSizeJitter=preset.tipSizeJitter;var tipOpacityJitter=preset.tipOpacityJitter;var tipScatter=preset.tipScatter;var grainRolling=preset.grainRolling;var tipSpeedOpacity=preset.tipSpeedOpacity;var tipDynamics=preset.tipDynamics
+        internal val tipSettings get()=if(kind==IMAGE_TIP_KIND && preset.tip.isNotEmpty())TipSettings(preset.tip,tipSpacing,tipFollow,tipRotation,tipJitter,grainScale,tipSizeJitter,tipOpacityJitter,tipScatter,grainRolling,tipSpeedOpacity,tipDynamics) else null
     }
     var paintMixingEnabled=false
     val paintBrush=ToolBrush(brushPresets[0])
-    val smudgeBrush=ToolBrush(brushPresets.find { it.name == "Medium Blend" } ?: brushPresets[0])
+    val smudgeBrush=ToolBrush(brushPresets.find { it.name == "Blend Medium" } ?: brushPresets[0])
     val eraseBrush=ToolBrush(brushPresets[0])
     val currentBrush get()=when(tool) {
         "Erase" -> eraseBrush
@@ -210,6 +216,8 @@ class DrawingSession(width: Int, height: Int) : Closeable {
         preset = p; size = p.size; flow = p.flow; pressureSize = p.pressureSize; pressureOpacity = p.pressureOpacity;fadeLength=p.fadeLength
         if(p.customId.isNotEmpty()){opacity=p.opacity;stabilization=p.stabilization;if(tool=="Erase")eraserHardness=p.hardness}
         currentBrush.kind=p.kind;currentBrush.colorLayout=p.colorLayout;currentBrush.colorMode=p.colorMode;currentBrush.colorCycle=p.colorCycle;currentBrush.wetMix=p.wetMix;currentBrush.wetPickup=p.wetPickup;currentBrush.wetness=p.wetness;currentBrush.palette=p.palette
+        currentBrush.tipSpacing=p.tipSpacing;currentBrush.tipFollow=p.tipFollow;currentBrush.tipRotation=p.tipRotation;currentBrush.tipJitter=p.tipJitter;currentBrush.grainScale=p.grainScale
+        currentBrush.tipSizeJitter=p.tipSizeJitter;currentBrush.tipOpacityJitter=p.tipOpacityJitter;currentBrush.tipScatter=p.tipScatter;currentBrush.grainRolling=p.grainRolling;currentBrush.tipSpeedOpacity=p.tipSpeedOpacity;currentBrush.tipDynamics=p.tipDynamics
         if(keepMix){currentBrush.wetMix=mixing.first;currentBrush.wetPickup=mixing.second;currentBrush.wetness=mixing.third}
         onBrushChosen(tool,p)
     }
@@ -241,7 +249,7 @@ class DrawingSession(width: Int, height: Int) : Closeable {
         val ink=if(erasing)(eraserHardness.coerceIn(0f,1f)*255+.5f).toInt() else color
         val timed=times!=null && times.size==input.size/4
         val samples=if(timed)FloatArray(input.size/4*5){i->if(i%5==4)times!![i/5] else input[i/5*4+i%5]}else input
-        val settings=StrokeSettings(kind,ink,if(dynamicBrushScaling)brush.size else brush.size/viewZoom.coerceAtLeast(.02f),brush.opacity,brush.flow,stabilization,if(pressureEnabled)brush.pressureSize else 0f,if(pressureEnabled)brush.pressureOpacity else 0f,brush.fadeLength,if(timed)5 else 4,strokeEffects(brush,erasing || tool=="Smudge"))
+        val settings=StrokeSettings(kind,ink,if(dynamicBrushScaling)brush.size else brush.size/viewZoom.coerceAtLeast(.02f),brush.opacity,brush.flow,stabilization,if(pressureEnabled)brush.pressureSize else 0f,if(pressureEnabled)brush.pressureOpacity else 0f,brush.fadeLength,if(timed)5 else 4,strokeEffects(brush,erasing || tool=="Smudge"),brush.tipSettings)
         synchronized(inputLock){
             if(phase==1){
                 val pending=pendingMoves
@@ -271,8 +279,15 @@ class DrawingSession(width: Int, height: Int) : Closeable {
         if(phase==3)strokeRecentColor=null
         if(phase==0 || phase==3)shapeStroke=false
         if(phase==0 && s.effects!="{}")NativeBridge.command(handle,s.effects)
+        if((phase==0 || phase==4) && s.tip!=null)sendTip(s.tip)
         NativeBridge.stroke(handle,phase,samples,s.kind,s.color,s.size,s.opacity,s.flow,s.smooth,s.pressureSize,s.pressureOpacity,s.fadeLength,s.sampleStride)
         if(phase==2 && shapeStroke){NativeBridge.command(handle,"{\"op\":\"nameLastUndo\",\"name\":\"Shape\"}");shapeStroke=false}
+    }
+
+    /** Gives the engine this stroke's image tip, sending its pixels only when the engine lacks them. */
+    private fun sendTip(t:TipSettings){
+        val reply=NativeBridge.command(handle,t.command(false)!!)
+        if(reply.contains("\"missing\"")){val full=t.command(true);if(full!=null)NativeBridge.command(handle,full) else main.post{if(!closed)onError("This brush's tip image is missing")}}
     }
 
     private var pendingShape:Pair<StrokeSettings,FloatArray>?=null
@@ -280,7 +295,7 @@ class DrawingSession(width: Int, height: Int) : Closeable {
     internal fun previewQuickShape(samples:FloatArray){
         if(closed || samples.size<4)return
         penActive=true
-        val settings=StrokeSettings(currentBrush.kind,color,if(dynamicBrushScaling)size else size/viewZoom.coerceAtLeast(.02f),opacity,flow,0f,if(pressureEnabled)pressureSize else 0f,if(pressureEnabled)pressureOpacity else 0f,fadeLength)
+        val settings=StrokeSettings(currentBrush.kind,color,if(dynamicBrushScaling)size else size/viewZoom.coerceAtLeast(.02f),opacity,flow,0f,if(pressureEnabled)pressureSize else 0f,if(pressureEnabled)pressureOpacity else 0f,fadeLength,tip=currentBrush.tipSettings)
         synchronized(inputLock){
             pendingMoves=null;pendingShape=settings to samples
             if(shapeQueued)return

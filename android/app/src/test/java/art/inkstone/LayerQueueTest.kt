@@ -15,7 +15,8 @@ import org.robolectric.annotation.*
 
 @RunWith(org.robolectric.RobolectricTestRunner::class)
 @Config(sdk=[35])
-@GraphicsMode(GraphicsMode.Mode.LEGACY)
+// The engine library loads into one Robolectric sandbox per JVM, so every test shares NATIVE graphics.
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class LayerQueueTest {
  private fun find(v:View,name:String):View?{if(v.contentDescription==name)return v;if(v is ViewGroup)for(i in 0 until v.childCount)find(v.getChildAt(i),name)?.let{return it};return null}
@@ -23,7 +24,7 @@ class LayerQueueTest {
  @Test fun repeatedAddTapsDuringPendingWorkCreateOnlyOneLayer(){
   val c=Robolectric.buildActivity(MainActivity::class.java).setup();val a=c.get();a.newCanvas(64,64);val s=a.session!!;val hold=CountDownLatch(1);val entered=CountDownLatch(1)
   try{
-   find(a.editor!!,"Layers")!!.performClick()
+   find(a.editor!!,"Layers")!!.performClick();shadowOf(Looper.getMainLooper()).idle()
    val worker=DrawingSession::class.java.getDeclaredField("worker").apply{isAccessible=true}.get(s) as ExecutorService
    worker.execute{entered.countDown();hold.await(10,TimeUnit.SECONDS)};assertTrue(entered.await(5,TimeUnit.SECONDS))
    val add=find(a.editor!!.findViewWithTag("tool-panel"),"Add")!!

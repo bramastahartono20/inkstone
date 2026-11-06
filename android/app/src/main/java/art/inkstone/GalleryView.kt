@@ -62,7 +62,7 @@ class GalleryView(private val activity: MainActivity) : LinearLayout(activity) {
         control("New stack"){createStack()}
         addView(HorizontalScrollView(activity).apply{isHorizontalScrollBarEnabled=false;addView(controls)},LayoutParams(-1,dp(44)))
         inside?.let{id->val stack=stacks.first{it.id==id};val count=artworks.count{it.stackId==id}
-            addView(label("‹ Gallery   /   ${stack.name} · $count artworks",17f).apply{contentDescription="Back to gallery";setPadding(dp(if(narrow)22 else 48),0,dp(16),0);isClickable=true;isFocusable=true;setOnClickListener{inside=null;prefs.edit().remove("inside").apply();rebuild(true)}},LayoutParams(-1,dp(44)))
+            addView(label("‹ Home   /   ${stack.name} · $count artworks",17f).apply{contentDescription="Back to Home";setPadding(dp(if(narrow)22 else 48),0,dp(16),0);isClickable=true;isFocusable=true;setOnClickListener{inside=null;prefs.edit().remove("inside").apply();rebuild(true)}},LayoutParams(-1,dp(44)))
         }
         if(stacks.isNotEmpty()){
             val destinations=LinearLayout(activity).apply{gravity=Gravity.CENTER_VERTICAL;setPadding(dp(if(narrow)12 else 36),0,dp(16),0)}
@@ -71,7 +71,7 @@ class GalleryView(private val activity: MainActivity) : LinearLayout(activity) {
                 ArtworkDrag.target(chip,activity.store){token,point->moveArtworks(token.ids,id,token.primary to point)}
                 destinations.addView(chip,LayoutParams(-2,dp(36)).apply{setMargins(dp(3),0,dp(3),0)})
             }
-            destination("Gallery",null);stacks.forEach{destination(it.name,it.id)}
+            destination("Home",null);stacks.forEach{destination(it.name,it.id)}
             addView(HorizontalScrollView(activity).apply{isHorizontalScrollBarEnabled=false;addView(destinations)},LayoutParams(-1,dp(44)))
         }
         val entries=GalleryLibrary.entries(artworks,stacks,inside,filterTag,sort)
@@ -195,7 +195,7 @@ class GalleryView(private val activity: MainActivity) : LinearLayout(activity) {
     }
     private fun chooseStack(ids:List<String>){
         val stacks=activity.store.stacks()
-        AlertDialog.Builder(activity).setTitle("Move to stack").setItems((listOf("New stack","Gallery (no stack)")+stacks.map{it.name}).toTypedArray()){_,which->
+        AlertDialog.Builder(activity).setTitle("Move to stack").setItems((listOf("New stack","Home (no stack)")+stacks.map{it.name}).toTypedArray()){_,which->
             if(which==0)createStack(ids)else{activity.store.assignStack(ids,if(which==1)null else stacks[which-2].id);selected.clear();selecting=false;rebuild(true)}
         }.show()
     }

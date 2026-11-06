@@ -24,6 +24,44 @@ fn contact_at(q:vec2<f32>)->u32{
 @group(0) @binding(2) var<uniform> p: Params;
 @group(0) @binding(3) var<storage, read_write> tip: array<u32>;
 @group(0) @binding(4) var<storage, read_write> output_pixels: array<u32>;
+// Image brush tip, laid out by image_tip::ImageTip::gpu_words: shape size, grain size, grain scale bits, 0, texels.
+@group(0) @binding(5) var<storage, read> image: array<u32>;
+// Glazed strokes (region.y = 1 + blend mode): the layer before the stroke and each pixel's strongest coverage.
+@group(0) @binding(6) var<storage, read> glaze_before: array<u32>;
+@group(0) @binding(7) var<storage, read_write> glaze_coverage: array<atomic<u32>>;
+// The ink blended with the pre-stroke pixel, like dab_paint::Glaze with composite(base, ink, 1, mode).
+fn stroke_ink(base:u32,ink:u32,mode:u32)->u32{
+ let b=unpack(base);if(mode<=1u || b.w==0.0){return ink;}
+ let s=unpack(ink).rgb;let d=b.rgb;var m=s;
+ if(mode==2u){m=s*d;}if(mode==3u){m=vec3(1.0)-(vec3(1.0)-s)*(vec3(1.0)-d);}if(mode==4u){m=min(s+d,vec3(1.0));}
+ return pack(vec4(s*(1.0-b.w)+m*b.w,unpack(ink).w));
+}
+fn image_texel(base:u32,n:u32,x:i32,y:i32,wrap:bool)->f32{
+ let m=i32(n);var ix=clamp(x,0,m-1);var iy=clamp(y,0,m-1);
+ if wrap{ix=((x%m)+m)%m;iy=((y%m)+m)%m;}
+ return f32(image[base+u32(iy)*n+u32(ix)])/255.0;
+}
+fn image_bilinear(base:u32,n:u32,q:vec2<f32>,wrap:bool)->f32{
+ let c=vec2<i32>(floor(q));let f=q-floor(q);
+ let top=mix(image_texel(base,n,c.x,c.y,wrap),image_texel(base,n,c.x+1,c.y,wrap),f.x);
+ let bottom=mix(image_texel(base,n,c.x,c.y+1,wrap),image_texel(base,n,c.x+1,c.y+1,wrap),f.x);
+ return mix(top,bottom,f.y);
+}
+// Matches ImageTip::coverage: the shape fills the dab's turned square, the grain is fixed to the canvas.
+// Grain position like ImageTip::grain_at: wet.w is the rolling texel size (0 = fixed to the canvas), wet.z the dab's
+// distance and region.x (f32 bits; paint dabs leave region unused) its scatter across the stroke.
+fn grain_at(pos:vec2<f32>,delta:vec2<f32>)->vec2<f32>{
+ if(p.wet.w>0.0){let along=dot(delta,p.direction.xy);let across=dot(delta,vec2(-p.direction.y,p.direction.x))+bitcast<f32>(p.region.x);return vec2((p.wet.z+along)/p.wet.w,across/p.wet.w+f32(image[1])*0.5);}
+ return pos/bitcast<f32>(image[2]);
+}
+fn image_tip(delta:vec2<f32>,radius:f32,angle:f32,pos:vec2<f32>)->f32{
+ let n=image[0];let s=sin(angle);let c=cos(angle);
+ let uv=vec2(c*delta.x+s*delta.y,-s*delta.x+c*delta.y)/max(radius,0.1);
+ if(any(abs(uv)>=vec2(1.0))){return 0.0;}
+ let shape=image_bilinear(4u,n,(uv+1.0)*0.5*f32(n)-0.5,false);
+ let g=image[1];if(g==0u || shape<=0.0){return shape;}
+ return shape*image_bilinear(4u+n*n,g,grain_at(pos,delta)-0.5,true);
+}
 fn unpack(c:u32)->vec4<f32>{return vec4<f32>(f32((c>>16u)&255u),f32((c>>8u)&255u),f32(c&255u),f32(c>>24u))/255.0;}
 fn strand_color(base:u32,delta:vec2<f32>,radius:f32)->vec4<f32>{
  let effect=p.color_effect;
@@ -96,9 +134,10 @@ fn sample_tip(pos:vec2<f32>)->u32{
  let xy=id.xy+p.rect.xy;if(any(xy>=p.rect.zw)){return;}let i=xy.y*p.canvas.x+xy.x;
  if(p.flags.z!=0u && selection[i]==0u){return;}
  let delta=vec2<f32>(xy)+0.5-p.dab.xy;let radius=p.dab.z;let d=length(delta)/max(radius,0.1);
- if(d>1.0+0.7/radius){return;}let edge=clamp((1.0-d)*radius+0.5,0.0,1.0);
  let smudging=p.canvas.z==6u || p.canvas.z>=128u;var shape=p.canvas.z;if(smudging){shape=select(2u,p.canvas.z&127u,p.canvas.z>=128u);}
  if(p.canvas.z>=64u && p.canvas.z<=127u){shape=p.canvas.z-64u;}
+ let imaged=shape==43u && image[0]!=0u;
+ if(d>1.0+0.7/radius && !imaged){return;}var edge=clamp((1.0-d)*radius+0.5,0.0,1.0);if(imaged){edge=1.0;}
  var texture=1.0;
  let tip=select(delta,vec2(dot(delta,vec2(-p.direction.y,p.direction.x)),dot(delta,p.direction.xy)),(p.color_effect.x>0.0 && p.color_effect.y>0.0) || shape==11u || shape==42u);
  switch(shape){
@@ -112,6 +151,7 @@ fn sample_tip(pos:vec2<f32>)->u32{
  case 14u:{texture=(0.1+noise(xy.x,xy.y,73u)*0.3)*max(1.0-d*d,0.0);}
  case 3u:{texture=pow(noise(xy.x,xy.y,p.flags.y/15u),1.8)*0.7;}
  case 4u,11u,32u,33u,34u,35u,36u,37u,38u,39u,40u,41u,42u:{texture=material_texture(shape,vec2<f32>(xy),tip,radius,d);}
+ case 43u:{if(imaged){texture=image_tip(delta,radius,p.direction.w,vec2<f32>(xy)+0.5);}}
  case 7u:{texture=select(0.0,0.85,abs(select(delta.x,tip.y,p.color_effect.x>0.0 && p.color_effect.y>0.0))<radius*0.32);}
  default:{}
  }
@@ -127,12 +167,19 @@ fn sample_tip(pos:vec2<f32>)->u32{
  var normalized=1.0-pow(1.0-ink_coverage,p.direction.z);
  if(ink_coverage<=0.2){let r=p.direction.z;let a=ink_coverage;normalized=r*a*(1.0+(1.0-r)*a*0.5+(1.0-r)*(2.0-r)*a*a/6.0);}
  let alpha=normalized*coverage;let dst=pixels[i];let lock=p.canvas.w!=0u;
+ if(p.region.y!=0u && !smudging && p.canvas.z<64u){
+  let c=u32(clamp(alpha,0.0,1.0)*255.0+0.5);if(c<=atomicMax(&glaze_coverage[i],c)){return;}
+  let base=glaze_before[i];let k=stroke_ink(base,ink,p.region.y);let a=f32(c)/255.0;
+  if(lock){if(base>>24u!=0u){pixels[i]=(over(base|0xff000000u,k|0xff000000u,a)&0xffffffu)|(base&0xff000000u);}}
+  else{pixels[i]=over(base,k,a);}
+  return;
+ }
  if(smudging){
   let carried=sample_tip((delta/radius+1.0)*16.0-0.5);var mask=edge;
   switch(shape){
   case 2u,4u:{mask=pow(max(1.0-d*d,0.0),2.0);}
   case 8u,9u:{let hard=select(0.35,0.7,shape==9u);let t=clamp((1.0-d)/(1.0-hard),0.0,1.0);mask=t*t*(3.0-2.0*t);}
-  case 7u,10u,11u,12u,13u,14u,32u,33u,34u,35u,36u,37u,38u,39u,40u,41u,42u:{mask=min(texture,1.0)*edge;}
+  case 7u,10u,11u,12u,13u,14u,32u,33u,34u,35u,36u,37u,38u,39u,40u,41u,42u,43u:{mask=min(texture,1.0)*edge;}
   default:{}
   }
   let c=mix_rgba(dst,carried,clamp(p.dab.w*mask*0.32*coverage,0.0,1.0));pixels[i]=select(c,(c&0xffffffu)|(dst&0xff000000u),lock);

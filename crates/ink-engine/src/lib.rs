@@ -21,6 +21,7 @@ mod masks;
 mod history;
 mod binfmt;
 mod psd_import;
+mod image_tip;
 
 const MAX_PIXELS: usize = 16_777_216;
 const MAX_LAYERS:usize=4096;
@@ -128,8 +129,23 @@ fn dab_spacing(brush: Brush) -> f32 {
 }
 
 #[derive(Clone,Copy)]
-struct RecordedStamp {direction:[f32;2],sample:Sample,brush:Brush,distance:f32}
-struct Stroke {path_delta:[f32;2], deferred_start:bool, exterior_before:State, exterior_changed:bool,loaded_paint:Option<brush_color::PaintLoad>,mix_distance:f32,direction:[f32;2], effects:brush_color::BrushColor, mask_before:Option<Arc<Vec<u8>>>, rect: [usize; 4], before: tiles::Tiles, layer: usize, last: Sample, filtered: Sample, brush: Brush, seed: u32, smudge: Option<Vec<u32>>, pending: Vec<gpu::Dab>, gpu_paint: bool, distance_to_dab: f32, distance:f32, stamp_distance:f32,records:Vec<RecordedStamp>, replay_end:Option<f32>, input_time:Option<f32>, input_position:(f32,f32), speed:f32, moving:bool }
+struct RecordedStamp {direction:[f32;2],sample:Sample,brush:Brush,distance:f32,speed:f32}
+struct Stroke {path_delta:[f32;2], deferred_start:bool, exterior_before:State, exterior_changed:bool,loaded_paint:Option<brush_color::PaintLoad>,mix_distance:f32,direction:[f32;2], effects:brush_color::BrushColor, mask_before:Option<Arc<Vec<u8>>>, rect: [usize; 4], before: tiles::Tiles, layer: usize, last: Sample, filtered: Sample, brush: Brush, seed: u32, smudge: Option<Vec<u32>>, pending: Vec<gpu::Dab>, gpu_paint: bool, distance_to_dab: f32, distance:f32, stamp_distance:f32,records:Vec<RecordedStamp>, replay_end:Option<f32>, input_time:Option<f32>, input_position:(f32,f32), speed:f32, moving:bool, tip:Option<Arc<image_tip::ImageTip>>, glaze:Option<Vec<u8>> }
+
+impl Stroke {
+    /// Dab spacing, using the image tip's own spacing when this stroke stamps one.
+    fn spacing(&self,p:Sample)->f32{
+        stroke_path::spacing_with(self.brush,p,self.image_tip().map_or(0.0,|t|t.spacing))
+    }
+    /// Image-tip paint strokes are glazed (see dab_paint::Glaze), unless they edit a mask.
+    fn glazed(&self)->bool{self.brush.kind==image_tip::KIND && self.image_tip().is_some() && self.mask_before.is_none()}
+    fn image_tip_arc(&self)->Option<&Arc<image_tip::ImageTip>>{
+        self.tip.as_ref().filter(|_|brush_shape(self.brush.kind)==image_tip::KIND)
+    }
+    fn image_tip(&self)->Option<&image_tip::ImageTip>{
+        self.tip.as_deref().filter(|_|brush_shape(self.brush.kind)==image_tip::KIND)
+    }
+}
 
 pub struct Engine {
     composite_cache:composite_cache::CompositeCache,
@@ -146,6 +162,8 @@ pub struct Engine {
     mask_edit: bool,
     symmetry: String,
     brush_color:brush_color::BrushColor,
+    /// Image tip for kind 43 brushes, set with `brushImage`.
+    brush_tip:Option<Arc<image_tip::ImageTip>>,
     input_error: Option<String>,
     history_directory: std::path::PathBuf,
     history_error: Option<String>,
@@ -233,7 +251,7 @@ impl Engine {
         Ok(Self {composite_cache:Default::default(),exterior_changed_tiles:Default::default(),exterior_dirty:true,gpu: None, renderer_requested: "cpu".into(), renderer_error: None, width, height, dpi:300, state: State { groups:vec![],layers: vec![Layer {adjustment:None,group_id:None,group_visible:true,group_locked:false,
             id: 1, name: "Layer 1".into(), visible: true, opacity: 1.0, blend: "Normal".into(),
             alpha_lock: false, locked:false, clipping: false, mask:None,mask_enabled:true,pixels: tiles::Tiles::blank(width,height),exterior:Default::default(),
-        }], active: 0, background: 0xfffaf9f6, background_visible: true }, next_id: 2,mask_edit:false,brush_color:brush_color::BrushColor::default(),symmetry:"Off".into(),
+        }], active: 0, background: 0xfffaf9f6, background_visible: true }, next_id: 2,mask_edit:false,brush_color:brush_color::BrushColor::default(),brush_tip:None,symmetry:"Off".into(),
             input_error:None,history_directory:std::env::temp_dir(),history_error:None,archiver:None,undo: vec![], redo: vec![],undo_names:vec![],redo_names:vec![],action_name:"Edit artwork".into(),history_notice:String::new(), stroke: None,liquify:None, flood_preview: None, selection: None,selection_alpha:None,selection_base:None,selection_version:0,saved_selections:std::collections::BTreeMap::new(),clipboard:None, dirty: true, damage: None, save_cache: Default::default(), adjust_coalesce: None })
     }
 
@@ -426,12 +444,17 @@ impl Engine {
         brush.fade_length=finite(brush.fade_length,0.0).clamp(0.0,10000.0);
         brush
     }
+    fn tip_for(&self,kind:u8)->Option<Arc<image_tip::ImageTip>>{
+        if brush_shape(kind)==image_tip::KIND{self.brush_tip.clone()}else{None}
+    }
+    fn tip_on_gpu(&self,_kind:u8)->bool{true}
+    fn tip_spacing(&self,kind:u8)->f32{self.tip_for(kind).map_or(0.0,|t|t.spacing)}
     pub fn update_brush(&mut self,brush:Brush){
         let brush=Self::normalize_brush(brush);
         if let Some(stroke)=&self.stroke {if stroke.brush.kind!=brush.kind {self.flush_gpu();}}
         if let Some(stroke)=&mut self.stroke {
-            if stroke.brush.kind!=brush.kind {stroke.smudge=None;}
-            stroke.brush=brush;stroke.distance_to_dab=stroke.distance_to_dab.min(dab_spacing(brush));
+            if stroke.brush.kind!=brush.kind {stroke.smudge=None;stroke.tip=if brush_shape(brush.kind)==image_tip::KIND{self.brush_tip.clone()}else{None};}
+            stroke.brush=brush;let spacing=stroke.spacing(Sample{x:0.0,y:0.0,pressure:1.0,tilt:0.0});stroke.distance_to_dab=stroke.distance_to_dab.min(spacing);
         }
     }
     pub fn begin(&mut self, p: Sample, brush: Brush) {
@@ -453,14 +476,14 @@ impl Engine {
         if mask_before.is_some() && (brush.kind==6 || brush.kind>=128){return;}
         let mut exterior_before=self.state.clone();exterior_before.layers[self.state.active].pixels=Tiles::blank(self.width,self.height);
         let mut stroke = Stroke {path_delta:[0.0;2],deferred_start:time.is_some(),exterior_before,exterior_changed:false,loaded_paint:None,mix_distance:0.0,direction:[1.0,0.0],effects:self.brush_color.clone(),mask_before:mask_before.clone(), rect: [self.width,self.height,0,0], before: self.state.layers[self.state.active].pixels.clone(),
-            layer: self.state.active, last: p, filtered: p, brush, seed: 0x736561, smudge: None, pending: Vec::new(), gpu_paint: brush.size>=32.0 && mask_before.is_none() && gpu_mixes(brush.kind,&self.brush_color), distance_to_dab: stroke_path::spacing(brush,p), distance:0.0,stamp_distance:0.0,records:vec![],replay_end:None,input_time:time,input_position:(p.x,p.y),speed:0.0,moving:false };
+            layer: self.state.active, last: p, filtered: p, brush, seed: 0x736561, smudge: None, pending: Vec::new(), gpu_paint: brush.size>=32.0 && mask_before.is_none() && gpu_mixes(brush.kind,&self.brush_color) && self.tip_on_gpu(brush.kind), distance_to_dab: stroke_path::spacing_with(brush,p,self.tip_spacing(brush.kind)), distance:0.0,stamp_distance:0.0,records:vec![],replay_end:None,input_time:time,input_position:(p.x,p.y),speed:0.0,moving:false,tip:self.tip_for(brush.kind),glaze:None };
         if stroke.effects.mix>0.0 && brush.kind<64 && brush.kind!=5 && brush.kind!=6 && !self.mask_edit && stroke.effects.mode=="Solid"
             && self.state.layers[stroke.layer].exterior.values().all(|tile|tile.iter().all(|c|*c>>24==0 || (*c&0xffffff)==(brush.color&0xffffff)))
             && ((self.state.layers[stroke.layer].pixels).is_blank() || self.state.layers[stroke.layer].pixels.iter().all(|c|c>>24==0 || (c&0xffffff)==(brush.color&0xffffff))){
-            stroke.effects.mix=0.0;stroke.gpu_paint=brush.size>=32.0;
+            stroke.effects.mix=0.0;stroke.gpu_paint=brush.size>=32.0 && self.tip_on_gpu(brush.kind);
         }
 
-        if stroke.gpu_paint { if let Some(gpu)=&mut self.gpu { gpu.selection(self.selection.as_deref(),self.selection_alpha.as_deref()); } }
+        if stroke.gpu_paint { if let Some(gpu)=&mut self.gpu { gpu.selection(self.selection.as_deref(),self.selection_alpha.as_deref());if stroke.glazed(){gpu.begin_glaze(self.width*self.height);} } }
         if brush.fade_length==0.0 && time.is_none(){self.stamp(p, &mut stroke);}
         self.stroke = Some(stroke);
     }
@@ -487,11 +510,12 @@ impl Engine {
             let p=points[0];
             s.last=p;s.filtered=p;s.path_delta=[0.0;2];s.deferred_start=false;
             s.brush=Self::normalize_brush(brush);s.brush.stabilization=0.0;
-            s.gpu_paint=s.brush.size>=32.0 && s.mask_before.is_none() && gpu_mixes(s.brush.kind,&s.effects);
+            s.gpu_paint=s.brush.size>=32.0 && s.mask_before.is_none() && gpu_mixes(s.brush.kind,&s.effects) && self.tip_on_gpu(s.brush.kind);
             s.rect=[self.width,self.height,0,0];s.exterior_changed=false;
             s.seed=0x736561;s.smudge=None;s.loaded_paint=None;s.mix_distance=0.0;
             s.distance=0.0;s.stamp_distance=0.0;s.direction=[1.0,0.0];
-            s.distance_to_dab=stroke_path::spacing(s.brush,p);s.records.clear();s.replay_end=None;
+            s.tip=self.tip_for(s.brush.kind);s.glaze=None;s.distance_to_dab=s.spacing(p);s.records.clear();
+            if s.gpu_paint && s.glazed(){if let Some(gpu)=&mut self.gpu{gpu.begin_glaze(self.width*self.height);}}s.replay_end=None;
             s.input_time=None;s.input_position=(p.x,p.y);s.speed=0.0;s.moving=false;
             if s.brush.fade_length==0.0{self.stamp(p,&mut s);}
             self.stroke=Some(s);
@@ -536,7 +560,7 @@ impl Engine {
                     // Some digitizers report full pressure on DOWN before their first moving sample.
                     if a.pressure>raw_pressure+0.15{a.pressure=raw_pressure;p.pressure=raw_pressure;}
                     stroke.last=a;
-                    stroke.distance_to_dab=stroke_path::spacing(stroke.brush,a);
+                    stroke.distance_to_dab=stroke.spacing(a);
                     stroke.deferred_start=false;
                 }
                 stroke.moving=true;
@@ -563,7 +587,7 @@ impl Engine {
                 pressure:a.pressure+(p.pressure-a.pressure)*t,tilt:a.tilt+(p.tilt-a.tilt)*t};
             stroke.stamp_distance=stroke.distance+travel;
             self.stamp(point,stroke);
-            travel+=stroke_path::spacing(stroke.brush,point);count+=1;
+            travel+=stroke.spacing(point);count+=1;
         }
         stroke.distance+=distance;
         stroke.distance_to_dab=(travel-distance).max(0.0001);
@@ -578,7 +602,7 @@ impl Engine {
             stroke.brush.opacity*=coverage;
             stroke.brush.fade_length*=0.65+1.35*fast;
         }
-        if stroke.replay_end.is_none() && (original.fade_length>0.0 || stroke.records.is_empty()){stroke.records.push(RecordedStamp{direction:stroke.direction,sample:p,brush:stroke.brush,distance:stroke.stamp_distance});}
+        if stroke.replay_end.is_none() && (original.fade_length>0.0 || stroke.records.is_empty() || stroke.image_tip().is_some_and(|t|t.tapers_end())){stroke.records.push(RecordedStamp{direction:stroke.direction,sample:p,brush:stroke.brush,distance:stroke.stamp_distance,speed:stroke.speed});}
         let mut points=[p;4];let mut count=1;
         if stroke.brush.kind<128 && stroke.brush.kind!=6 {
             let x=self.width as f32;let y=self.height as f32;
@@ -593,9 +617,23 @@ impl Engine {
         for i in 0..count{let point=points[i];if points[..i].iter().any(|q|(q.x-point.x).abs()<0.001 && (q.y-point.y).abs()<0.001){continue;}self.stamp_one(point,stroke);}
         stroke.brush=original;
     }
-    fn stamp_one(&mut self, p: Sample, stroke: &mut Stroke) {
+    fn stamp_one(&mut self, p0: Sample, stroke: &mut Stroke) {
         if stroke.pending.len() >= gpu::MAX_DABS { self.flush_stroke(stroke); }
         let mut brush = stroke.brush;
+        // Image tips may scatter, shrink and fade each dab. GPU dabs keep the unjittered sample, so a
+        // CPU replay of them applies the same jitter once.
+        let mut p=p0;let mut grain_shift=0.0;
+        let grain_texel=stroke.image_tip().map_or(0.0,|t|t.rolling_texel(stroke.brush.size));
+        if let Some(tip)=stroke.image_tip(){
+            let j=tip.jitter(stroke.stamp_distance);let diameter=stroke_path::diameter(brush,p);grain_shift=j.offset*diameter;
+            p.x-=stroke.direction[1]*grain_shift;p.y+=stroke.direction[0]*grain_shift;
+            brush.size*=j.size;brush.opacity*=j.opacity;
+            // Pen speed, measured only for timed input, scaled like the fade tail's speed response.
+            let fast=stroke.input_time.map(|_|(stroke.speed/(stroke.brush.size.max(1.0)*0.035)).clamp(0.0,2.0)/2.0);
+            if let (true,Some(fast))=(tip.speed_opacity>0.0,fast){brush.opacity*=1.0-tip.speed_opacity*fast;}
+            let (grow,fade)=tip.dynamics(stroke.stamp_distance,stroke.replay_end,stroke.brush.size,finite(p.tilt,0.0),fast);
+            brush.size*=grow;brush.opacity*=fade;
+        }
         let multicolor=brush.kind<64 && brush.kind!=5 && brush.kind!=6 && !self.mask_edit && stroke.effects.mode!="Solid" && !stroke.effects.mode.is_empty();
         let strands=multicolor && stroke.effects.layout>0;
         if brush.kind<64 && brush.kind!=5 && brush.kind!=6 && !self.mask_edit{
@@ -626,13 +664,18 @@ impl Engine {
         }
         if brush.fade_length>0.0 && stroke.input_time.is_some(){brush.opacity=1.0-(1.0-brush.opacity.clamp(0.0,1.0)).powf(dab_spacing(brush)/brush.size.max(1.0));}
         let pressure = finite(p.pressure, 1.0).clamp(0.0, 1.0).powf(0.7);
-        let mut radius = brush.size * 0.5 * (1.0 - brush.pressure_size + brush.pressure_size * pressure).max(0.08);
+        // Image tips map pressure through their own curves (Procreate's are linear unless edited).
+        let (size_pressure,opacity_pressure)=stroke.image_tip().map_or((pressure,pressure),|t|{let raw=finite(p.pressure,1.0).clamp(0.0,1.0);(t.size_curve.at(raw),t.opacity_curve.at(raw))});
+        let mut radius = brush.size * 0.5 * (1.0 - brush.pressure_size + brush.pressure_size * size_pressure).max(0.08);
         if matches!(brush_shape(brush.kind), 1 | 3) { radius *= 1.0 + finite(p.tilt, 0.0).clamp(0.0, 1.57) * 0.7; }
-        let x0 = ((p.x - radius - 1.0).floor().max(0.0) as usize).min(self.width);
-        let y0 = ((p.y - radius - 1.0).floor().max(0.0) as usize).min(self.height);
-        let x1 = ((p.x + radius + 1.0).ceil().max(0.0) as usize).min(self.width);
-        let y1 = ((p.y + radius + 1.0).ceil().max(0.0) as usize).min(self.height);
-        let crosses=p.x-radius<0.0 || p.y-radius<0.0 || p.x+radius>=self.width as f32 || p.y+radius>=self.height as f32;
+        // An image tip fills the dab's square, so a turned tip reaches out to its corners.
+        let tip_angle=stroke.image_tip().map(|t|t.angle(stroke.direction,stroke.stamp_distance));
+        let extent=if tip_angle.is_some(){radius*std::f32::consts::SQRT_2}else{radius};
+        let x0 = ((p.x - extent - 1.0).floor().max(0.0) as usize).min(self.width);
+        let y0 = ((p.y - extent - 1.0).floor().max(0.0) as usize).min(self.height);
+        let x1 = ((p.x + extent + 1.0).ceil().max(0.0) as usize).min(self.width);
+        let y1 = ((p.y + extent + 1.0).ceil().max(0.0) as usize).min(self.height);
+        let crosses=p.x-extent<0.0 || p.y-extent<0.0 || p.x+extent>=self.width as f32 || p.y+extent>=self.height as f32;
         // Smudge picks up off-canvas paint, which only the CPU holds, so it leaves the GPU at the edge.
         if crosses && stroke.gpu_paint && (brush.kind==6 || brush.kind>=128) {self.flush_stroke(stroke);stroke.gpu_paint=false;}
         let mut exterior_only=None;
@@ -651,12 +694,12 @@ impl Engine {
                 let field=brush_color::ContactField::new(&stroke.before,self.width,self.height,p.x,p.y,radius,brush.color,stroke.effects.mix*stroke.effects.wetness*0.65);
                 for(i,c)in field.colors.iter().enumerate(){contact[i/4][i%4]=*c;}
             }
-            let wet=[has_contact as u32 as f32,if mixing{stroke.effects.wetness*0.45}else{0.0},0.0,0.0];
-            stroke.pending.push(gpu::Dab { brush:stroke.brush, sample:p, distance:stroke.stamp_distance, params:gpu::Params {
+            let wet=[has_contact as u32 as f32,if mixing{stroke.effects.wetness*0.45}else{0.0},stroke.stamp_distance,grain_texel];
+            stroke.pending.push(gpu::Dab { brush:stroke.brush, sample:p0, distance:stroke.stamp_distance, params:gpu::Params {
                 meta:[self.width as u32,self.height as u32,brush.kind as u32,self.state.layers[stroke.layer].alpha_lock as u32],
                 rect:[x0 as u32,y0 as u32,x1 as u32,y1 as u32],
-                dab:[p.x,p.y,radius,brush.opacity*brush.flow*(1.0-brush.pressure_opacity+brush.pressure_opacity*pressure)],
-                flags:[brush.color,stroke.seed,self.selection.is_some() as u32,initial as u32],region:[0;4],palette,color_effect,direction:[stroke.direction[0],stroke.direction[1],stroke_path::deposition(brush,p),0.0],wet,contact,
+                dab:[p.x,p.y,radius,brush.opacity*brush.flow*(1.0-brush.pressure_opacity+brush.pressure_opacity*opacity_pressure)],
+                flags:[brush.color,stroke.seed,self.selection.is_some() as u32,initial as u32],region:[grain_shift.to_bits(),if stroke.glazed(){1+stroke.image_tip().map_or(0,|t|t.blend as u32)}else{0},0,0],palette,color_effect,direction:[stroke.direction[0],stroke.direction[1],stroke_path::deposition(brush,p),tip_angle.unwrap_or(0.0)],wet,contact,
             }});
             if !initial { stroke.seed=stroke.seed.wrapping_add(1); }
             let layer=&self.state.layers[stroke.layer];
@@ -696,12 +739,17 @@ impl Engine {
         let mask=if mask_edit{Some(Arc::make_mut(layer.mask.as_mut().unwrap()))}else{None};
         let mut mask=mask;
         let mut pixels:Option<&mut tiles::Tiles>=if mask_edit{None}else{Some(&mut layer.pixels)};
-        let strength = brush.opacity * brush.flow * (1.0 - brush.pressure_opacity + brush.pressure_opacity * pressure);
+        let strength = brush.opacity * brush.flow * (1.0 - brush.pressure_opacity + brush.pressure_opacity * opacity_pressure);
         let deposition=stroke_path::deposition(brush,p);
         let margin=2048i32;
-        let bx0=(p.x-radius-1.0).floor().max(-margin as f32) as i32;let by0=(p.y-radius-1.0).floor().max(-margin as f32) as i32;
-        let bx1=(p.x+radius+1.0).ceil().min(self.width as f32+margin as f32) as i32;let by1=(p.y+radius+1.0).ceil().min(self.height as f32+margin as f32) as i32;
-        let paint=dab_paint::DabPaint{p,radius,brush,color,stroke_color:stroke.brush.color,shape,strands,direction:stroke.direction,seed:stroke.seed,effects:&stroke.effects,stamp_distance:stroke.stamp_distance,carried_color,lock,strength,deposition,selected:selected.as_deref(),selection_alpha:selection_alpha.as_deref(),contact:contact.as_ref()};
+        let bx0=(p.x-extent-1.0).floor().max(-margin as f32) as i32;let by0=(p.y-extent-1.0).floor().max(-margin as f32) as i32;
+        let bx1=(p.x+extent+1.0).ceil().min(self.width as f32+margin as f32) as i32;let by1=(p.y+extent+1.0).ceil().min(self.height as f32+margin as f32) as i32;
+        // The GPU keeps its own coverage; the CPU needs one only when it paints the canvas itself.
+        if stroke.glaze.is_none() && stroke.glazed() && (!stroke.gpu_paint || self.gpu.is_none()){stroke.glaze=Some(vec![0;self.width*self.height]);}
+        // SAFETY: AtomicU8 has the size and alignment of u8, and this mutable borrow is the only access while painting.
+        let glaze_cover:Option<&[std::sync::atomic::AtomicU8]>=stroke.glaze.as_mut().map(|v|unsafe{&*(v.as_mut_slice() as *mut [u8] as *const [std::sync::atomic::AtomicU8])});
+        let glaze_mode=stroke.image_tip().and_then(|t|t.blend_mode());
+        let paint=dab_paint::DabPaint{p,radius,brush,color,stroke_color:stroke.brush.color,shape,strands,direction:stroke.direction,seed:stroke.seed,effects:&stroke.effects,stamp_distance:stroke.stamp_distance,carried_color,lock,strength,deposition,selected:selected.as_deref(),selection_alpha:selection_alpha.as_deref(),contact:contact.as_ref(),tip:tip_angle.and(stroke.tip.as_deref()).map(|t|(t,tip_angle.unwrap_or(0.0))),grain_texel,grain_shift,glaze:glaze_cover.map(|coverage|dab_paint::Glaze{before:&stroke.before,coverage,mode:glaze_mode})};
         let threads=std::thread::available_parallelism().map_or(1,|n|n.get()).min(8);
         let area=((bx1-bx0).max(0)*(by1-by0).max(0)) as usize;
         let on_canvas=bx0>=0 && by0>=0 && bx1<=self.width as i32 && by1<=self.height as i32;
@@ -765,12 +813,12 @@ impl Engine {
                 let mask=match shape {
                     2 | 4 => ((1.0-shade.d*shade.d).max(0.0)).powf(2.0),
                     8 | 9 => {let hard=if shape==8{0.35}else{0.7};let t=((1.0-shade.d)/(1.0-hard)).clamp(0.0,1.0);t*t*(3.0-2.0*t)},
-                    7 | 10 | 11 | 12 | 13 | 14 | 32..=42 => shade.texture.min(1.0)*shade.edge,
+                    7 | 10 | 11 | 12 | 13 | 14 | 32..=43 => shade.texture.min(1.0)*shade.edge,
                     _=>shade.edge,
                 };
                 let mixed=mix_rgba(dst,carried,(strength*mask*0.32*selection_alpha.as_ref().map_or(1.0,|a|a[idx] as f32/255.0)).clamp(0.0,1.0));
                 *cell=if lock {(mixed&0xffffff)|(dst&0xff000000)}else{mixed};
-            } else if let Some(v)=paint.blend(&shade,dst){
+            } else if let Some(v)=paint.blend(&shade,dst,inside.then_some(idx)){
                 *cell=v;
             }
         }}
@@ -809,7 +857,8 @@ impl Engine {
         // An off-canvas smudge still picks up transparency and updates its carried tip.
         let dispatch_rect=if rect[0]>=rect[2] || rect[1]>=rect[3] {[0,0,1,1]}else{rect};
         let smudging=stroke.brush.kind==6 || stroke.brush.kind>=128;
-        let result=self.gpu.as_mut().unwrap().paint(&mut self.state.layers[stroke.layer],&pending,dispatch_rect,smudging);
+        let gpu=self.gpu.as_mut().unwrap();gpu.image_tip(stroke.image_tip_arc());
+        let result=gpu.paint(&mut self.state.layers[stroke.layer],&pending,dispatch_rect,smudging);
         match result {
             Ok(tip)=>{
                 if smudging {stroke.smudge=tip;}
@@ -841,16 +890,18 @@ impl Engine {
                 self.flush_stroke(&mut s);
             }
             if s.records.is_empty(){self.stamp(s.last,&mut s);self.flush_stroke(&mut s);}
-            if s.distance>0.01 && s.records.iter().any(|r|r.brush.fade_length>0.0) {
+            // Fade tails and image-tip end tapers need the stroke's length, so the stroke is redrawn once it is known.
+            if s.distance>0.01 && (s.records.iter().any(|r|r.brush.fade_length>0.0) || s.image_tip().is_some_and(|t|t.tapers_end())) {
                 if let Some(mask)=&s.mask_before{self.state.layers[s.layer].mask=Some(mask.clone());}
                 else{self.state.layers[s.layer].pixels=s.before.clone();}
                 self.state.layers[s.layer].exterior=s.exterior_before.layers[s.layer].exterior.clone();
                 if s.exterior_changed{self.exterior_dirty=true;}
-                s.replay_end=Some(s.distance);s.seed=0x736561;s.smudge=None;s.loaded_paint=None;s.mix_distance=0.0;
+                s.replay_end=Some(s.distance);s.seed=0x736561;s.smudge=None;s.loaded_paint=None;s.mix_distance=0.0;s.glaze=None;
+                if s.gpu_paint && s.glazed(){if let Some(gpu)=&mut self.gpu{gpu.begin_glaze(self.width*self.height);}}
                 let records=std::mem::take(&mut s.records);
                 for record in records {
                     if s.brush.kind!=record.brush.kind{self.flush_stroke(&mut s);s.smudge=None;}
-                    s.direction=record.direction;s.brush=record.brush;s.stamp_distance=record.distance;self.stamp(record.sample,&mut s);
+                    s.direction=record.direction;s.brush=record.brush;s.stamp_distance=record.distance;s.speed=record.speed;self.stamp(record.sample,&mut s);
                 }
                 self.flush_stroke(&mut s);
                 if s.rect[0]<s.rect[2] && s.rect[1]<s.rect[3]{let damage=self.damage.get_or_insert(s.rect);for i in 0..2{damage[i]=damage[i].min(s.rect[i]);damage[i+2]=damage[i+2].max(s.rect[i+2]);}}
@@ -962,7 +1013,8 @@ impl Engine {
         let pending=std::mem::take(&mut stroke.pending);
         let smudging=stroke.brush.kind==6 || stroke.brush.kind>=128;
         let bg=if self.state.background_visible {self.state.background}else{0};
-        let result=self.gpu.as_mut().unwrap().paint_and_composite(&mut self.state.layers[stroke.layer],&pending,paint_rect,smudging,&layers,self.width,rect,bg);
+        let gpu=self.gpu.as_mut().unwrap();gpu.image_tip(stroke.image_tip_arc());
+        let result=gpu.paint_and_composite(&mut self.state.layers[stroke.layer],&pending,paint_rect,smudging,&layers,self.width,rect,bg);
         let out=match result {
             Ok((tip,pixels))=>{
                 if smudging {stroke.smudge=tip;}
@@ -1043,10 +1095,11 @@ impl Engine {
     pub fn command(&mut self, v: &Value) -> Result<Value, String> {
         let op = v["op"].as_str().ok_or("Missing operation")?;
         if op=="exteriorPreview"{return Ok(self.exterior_preview());}
-        if !matches!(op,"info"|"pick"|"selectionPreview"|"brushEffects"){self.exterior_dirty=true;}
-        if !op.starts_with("liquify") && !matches!(op,"info"|"pick"|"selectionPreview"|"exteriorPreview"){self.finish_liquify(false);}
-        if !matches!(op,"info"|"pick"|"selectionPreview"|"exteriorPreview"){self.end();}else if op=="pick"{self.flush_gpu();}
-        if self.flood_preview.is_some() && !matches!(op,"adjustPreview"|"adjustCommit"|"floodPreview"|"floodCommit"|"floodCancel"|"info"|"pick"|"selectionPreview"|"exteriorPreview") {
+        if !matches!(op,"info"|"pick"|"selectionPreview"|"brushEffects"|"brushImage"){self.exterior_dirty=true;}
+        // A new image tip applies from the next stroke, so it leaves the current one running.
+        if !op.starts_with("liquify") && !matches!(op,"info"|"pick"|"selectionPreview"|"exteriorPreview"|"brushImage"){self.finish_liquify(false);}
+        if !matches!(op,"info"|"pick"|"selectionPreview"|"exteriorPreview"|"brushImage"){self.end();}else if op=="pick"{self.flush_gpu();}
+        if self.flood_preview.is_some() && !matches!(op,"adjustPreview"|"adjustCommit"|"floodPreview"|"floodCommit"|"floodCancel"|"info"|"pick"|"selectionPreview"|"exteriorPreview"|"brushImage") {
             self.cancel_flood();
         }
         let index = v["index"].as_u64().unwrap_or(self.state.active as u64) as usize;
@@ -1076,6 +1129,12 @@ impl Engine {
                 self.dirty=true;
             },
             "brushEffects"=>{self.brush_color=brush_color::BrushColor::parse(v)?;},
+            "brushImage"=>{
+                if v["clear"].as_bool()==Some(true){self.brush_tip=None;}
+                else if v["shape"].is_string(){self.brush_tip=Some(Arc::new(image_tip::ImageTip::parse(v)?));}
+                else if self.brush_tip.as_ref().map(|t|t.key.as_str())!=v["key"].as_str(){return Ok(json!({"missing":true}));}
+                return Ok(json!({"ok":true}));
+            },
             "renderer" => {self.set_renderer(v["mode"].as_str().unwrap_or("auto"))?;},
             "info" => {},
             "memoryBudget" => {set_pixel_budget(v["bytes"].as_u64().ok_or("Missing memory budget")? as usize);},
@@ -1601,3 +1660,5 @@ mod save_format_tests;
 struct SavedLayerWrite<'a> {#[serde(default)]adjustment:Option<(String,f32)>,#[serde(default,skip_serializing_if="std::collections::BTreeMap::is_empty")]exterior:std::collections::BTreeMap<i64,Vec<(u32,u32)>>,#[serde(default,skip_serializing_if="Option::is_none")]group_id:Option<u32>,#[serde(default)]mask:Option<Vec<(u32,u32)>>,#[serde(default="default_true")]mask_enabled:bool,#[serde(default)]locked:bool,id:u32,name:String,visible:bool,opacity:f32,blend:String,alpha_lock:bool,clipping:bool,runs:PixelRuns<'a>}
 struct PixelRuns<'a>(&'a Tiles);
 impl Serialize for PixelRuns<'_>{fn serialize<S:serde::Serializer>(&self,serializer:S)->Result<S::Ok,S::Error>{use serde::ser::SerializeSeq;let pixels=self.0;let len=pixels.len();let mut seq=serializer.serialize_seq(None)?;let mut i=0;while i<len{let color=pixels[i];let start=i;i+=1;while i<len && pixels[i]==color{i+=1;}seq.serialize_element(&((i-start) as u32,color))?;}seq.end()}}
+#[cfg(test)]
+mod image_tip_tests;

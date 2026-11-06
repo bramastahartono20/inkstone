@@ -306,11 +306,11 @@ class PaintCanvas(context: Context, val session: DrawingSession) : View(context)
         guides.draw(canvas,w,h,zoom)
         liquify.draw(canvas,zoom)
         if(session.symmetryMode!="Off"){
-            paint.color=0x997fc7ef.toInt();paint.strokeWidth=1.2f*dp/zoom;paint.style=Paint.Style.STROKE
+            paint.color=0x997fe0d2.toInt();paint.strokeWidth=1.2f*dp/zoom;paint.style=Paint.Style.STROKE
             val mode=session.symmetryMode
             if(mode in listOf("Vertical","Quadrant","Radial 4"))canvas.drawLine(w/2,0f,w/2,h,paint)
             if(mode in listOf("Horizontal","Quadrant","Radial 4"))canvas.drawLine(0f,h/2,w,h/2,paint)
-            if(mode=="Radial 4"){paint.color=0x557fc7ef;canvas.drawLine(0f,h/2-w/2,w,h/2+w/2,paint);canvas.drawLine(0f,h/2+w/2,w,h/2-w/2,paint)}
+            if(mode=="Radial 4"){paint.color=0x557fe0d2;canvas.drawLine(0f,h/2-w/2,w,h/2+w/2,paint);canvas.drawLine(0f,h/2+w/2,w,h/2-w/2,paint)}
             paint.style=Paint.Style.FILL
         }
         if (selectionPath != null && !rasterTransform.displaying) {

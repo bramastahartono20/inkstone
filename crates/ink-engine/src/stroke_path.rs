@@ -5,6 +5,15 @@ pub fn diameter(brush: Brush, p: Sample) -> f32 {
         + brush.pressure_size * finite(p.pressure, 1.0).clamp(0.0, 1.0).powf(0.7)).max(0.08)
 }
 
+/// Spacing for a brush whose image tip sets its own, as a fraction of the diameter (0 = default).
+pub fn spacing_with(brush: Brush, p: Sample, tip_spacing: f32) -> f32 {
+    if tip_spacing > 0.0 && brush.kind != 6 && brush.kind < 128 {
+        return (diameter(brush, p) * tip_spacing).max(0.25);
+    }
+    if tip_spacing > 0.0 { return (brush.size * tip_spacing).max(0.65); }
+    spacing(brush, p)
+}
+
 pub fn spacing(brush: Brush, p: Sample) -> f32 {
     let soft = matches!(crate::brush_shape(brush.kind), 2 | 4 | 8 | 9);
     if brush.kind==6 || brush.kind>=128 {return (brush.size * if soft {0.035} else {0.055}).max(0.65);}

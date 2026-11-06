@@ -11,7 +11,7 @@ internal class RecentBrushes(context:Context){
     fun list(tool:String):List<BrushPreset>{
         val saved=runCatching{JSONArray(prefs.getString(key(tool),"[]"))}.getOrDefault(JSONArray())
         val brushes=library.all()
-        val resolved=(0 until saved.length()).mapNotNull{i->val id=saved.optString(i);brushes.firstOrNull{identity(it)==id}?:brushes.firstOrNull{it.name==id}}.distinctBy(::identity).take(20)
+        val resolved=(0 until saved.length()).mapNotNull{i->val id=saved.optString(i).let{if(it.startsWith("builtin:"))"builtin:"+LegacyNames.brush(it.removePrefix("builtin:")) else LegacyNames.brush(it)};brushes.firstOrNull{identity(it)==id}?:brushes.firstOrNull{it.name==id}}.distinctBy(::identity).take(20)
         val canonical=JSONArray(resolved.map(::identity)).toString()
         if(canonical!=saved.toString())prefs.edit().putString(key(tool),canonical).apply()
         return resolved

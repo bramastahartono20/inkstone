@@ -53,6 +53,15 @@ pub struct Gpu {
     gather: wgpu::ComputePipeline,
     tip: wgpu::Buffer,
     selection: wgpu::Buffer,
+    /// Image brush tip and grain (see image_tip::ImageTip::gpu_words); a zero header means none.
+    image: wgpu::Buffer,
+    image_key: Option<u64>,
+    /// Glazed strokes: the layer as it was when the stroke began, and each pixel's strongest
+    /// coverage so far (see dab_paint::Glaze). Small placeholders until a glazed stroke needs them.
+    glaze_before: wgpu::Buffer,
+    glaze_coverage: wgpu::Buffer,
+    /// Set when a glazed stroke starts; the next paint batch snapshots the layer and clears coverage.
+    glaze_reset: bool,
     layers: HashMap<u32, CachedLayer>,
     tick: u64,
     pub description: String,
@@ -92,7 +101,7 @@ impl Gpu {
             *error_sink.lock().unwrap() = Some(error.to_string());
         }));
         device.push_error_scope(wgpu::ErrorFilter::Validation);
-        let entries: Vec<_> = (0..5)
+        let entries: Vec<_> = (0..8)
             .map(|i| wgpu::BindGroupLayoutEntry {
                 binding: i,
                 visibility: wgpu::ShaderStages::COMPUTE,
@@ -100,7 +109,7 @@ impl Gpu {
                     ty: if i == 2 {
                         wgpu::BufferBindingType::Uniform
                     } else {
-                        wgpu::BufferBindingType::Storage { read_only: i == 1 }
+                        wgpu::BufferBindingType::Storage { read_only: i == 1 || i == 5 || i == 6 }
                     },
                     has_dynamic_offset: i == 2,
                     min_binding_size: None,
@@ -189,7 +198,21 @@ impl Gpu {
             "No selection",
             wgpu::BufferUsages::STORAGE,
         );
+        let image = Self::upload(
+            &device,
+            &queue,
+            &[0; 16],
+            "No image tip",
+            wgpu::BufferUsages::STORAGE,
+        );
+        let placeholder = |label| Self::buffer(&device, 4, label, wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST);
+        let (glaze_before, glaze_coverage) = (placeholder("No glaze snapshot"), placeholder("No glaze coverage"));
         Ok(Self {
+            glaze_before,
+            glaze_coverage,
+            glaze_reset: false,
+            image,
+            image_key: None,
             device,
             asynchronous_error,
             queue,
@@ -264,6 +287,32 @@ impl Gpu {
             wgpu::BufferUsages::STORAGE,
         );
     }
+    /// Uploads the image tip used by kind 43 dabs, when it differs from the resident one.
+    pub fn image_tip(&mut self, tip: Option<&Arc<crate::image_tip::ImageTip>>) {
+        let key = tip.map(|t| t.id);
+        if key == self.image_key || tip.is_none() {
+            return;
+        }
+        let words = tip.unwrap().gpu_words();
+        self.image = Self::upload(
+            &self.device,
+            &self.queue,
+            bytemuck::cast_slice(&words),
+            "Image tip",
+            wgpu::BufferUsages::STORAGE,
+        );
+        self.image_key = key;
+    }
+    /// Starts a glazed stroke on a canvas of `pixels` pixels: the next batch snapshots its layer.
+    pub fn begin_glaze(&mut self, pixels: usize) {
+        let bytes = (pixels * 4) as u64;
+        if self.glaze_before.size() != bytes.max(4) {
+            let usage = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
+            self.glaze_before = Self::buffer(&self.device, bytes, "Glaze snapshot", usage);
+            self.glaze_coverage = Self::buffer(&self.device, bytes, "Glaze coverage", usage);
+        }
+        self.glaze_reset = true;
+    }
     fn sync_layer(&mut self, layer: &Layer) -> Result<(), String> {
         let size = layer.pixels.len() * 4;
         if size > self.device.limits().max_storage_buffer_binding_size as usize {
@@ -287,7 +336,8 @@ impl Gpu {
                 &self.device,
                 size as u64,
                 "Resident layer",
-                wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                // COPY_SRC lets a glazed stroke snapshot the layer on the GPU.
+                wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
             );
             self.layers.insert(
                 layer.id,
@@ -455,6 +505,12 @@ impl Gpu {
         smudging: bool,
     ) -> Result<wgpu::Buffer, String> {
         self.sync_layer(layer)?;
+        if self.glaze_reset {
+            let size = self.glaze_before.size().min(self.layers[&layer.id].buffer.size());
+            encoder.copy_buffer_to_buffer(&self.layers[&layer.id].buffer, 0, &self.glaze_before, 0, size);
+            encoder.clear_buffer(&self.glaze_coverage, 0, None);
+            self.glaze_reset = false;
+        }
         let [x, y, x1, y1] = rect;
         let w = x1 - x;
         let h = y1 - y;
@@ -498,6 +554,9 @@ impl Gpu {
             &params,
             &self.tip,
             &output,
+            &self.image,
+            &self.glaze_before,
+            &self.glaze_coverage,
         ];
         let entries: Vec<_> = buffers
             .iter()

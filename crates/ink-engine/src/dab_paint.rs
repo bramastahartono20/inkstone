@@ -30,6 +30,25 @@ pub(super) struct DabPaint<'a> {
     pub(super) selected: Option<&'a [bool]>,
     pub(super) selection_alpha: Option<&'a [u8]>,
     pub(super) contact: Option<&'a brush_color::ContactField>,
+    /// The image tip and this dab's angle, for kind 43 brushes with a tip.
+    pub(super) tip: Option<(&'a image_tip::ImageTip, f32)>,
+    /// Rolling grain texel size in canvas pixels; 0 when the grain is fixed to the canvas.
+    pub(super) grain_texel: f32,
+    /// The dab's scatter across the stroke, in pixels.
+    pub(super) grain_shift: f32,
+    /// Glazed painting for image-tip strokes, see [`Glaze`].
+    pub(super) glaze: Option<Glaze<'a>>,
+}
+
+/// A glazed stroke keeps each pixel's strongest dab coverage and paints the ink over the layer as
+/// it was before the stroke, like Procreate. Overlapping dabs of one stroke then never exceed the
+/// brush's opacity, so grain stays visible, and a blend mode applies to the stroke as a whole.
+#[derive(Clone, Copy)]
+pub(super) struct Glaze<'a> {
+    pub(super) before: &'a tiles::Tiles,
+    /// One coverage value per canvas pixel; atomics let the parallel row bands share it.
+    pub(super) coverage: &'a [std::sync::atomic::AtomicU8],
+    pub(super) mode: Option<&'static str>,
 }
 
 /// Coverage of one pixel before it is blended into the destination.
@@ -55,10 +74,11 @@ impl DabPaint<'_> {
         let dx = x as f32 + 0.5 - self.p.x;
         let dy = y as f32 + 0.5 - self.p.y;
         let d = (dx * dx + dy * dy).sqrt() / radius.max(0.1);
-        if d > 1.0 + 0.7 / radius {
+        if d > 1.0 + 0.7 / radius && self.tip.is_none() {
             return None;
         }
-        let edge = ((1.0 - d) * radius + 0.5).clamp(0.0, 1.0);
+        // An image tip draws its own edge, including the corners outside the round dab.
+        let edge = if self.tip.is_some() { 1.0 } else { ((1.0 - d) * radius + 0.5).clamp(0.0, 1.0) };
         let tip_x = if strands || matches!(shape, 11 | 42) { -dir[1] * dx + dir[0] * dy } else { dx };
         let tip_y = if strands || matches!(shape, 11 | 42) { dir[0] * dx + dir[1] * dy } else { dy };
         let texture = match shape {
@@ -74,6 +94,10 @@ impl DabPaint<'_> {
             16..=31 => { let hard = (shape - 16) as f32 / 15.0 * 0.95; let t = ((1.0 - d) / (1.0 - hard)).clamp(0.0, 1.0); t * t * (3.0 - 2.0 * t) },
             6 => 0.11,
             7 => if (if strands { tip_y } else { dx }).abs() < radius * 0.32 { 0.85 } else { 0.0 },
+            43 => self.tip.map_or(1.0, |(tip, angle)| {
+                let grain = tip.grain_at(x as f32 + 0.5, y as f32 + 0.5, [dx, dy], dir, self.stamp_distance, self.grain_texel, self.grain_shift);
+                tip.coverage(dx, dy, radius, angle, grain)
+            }),
             _ => 1.0,
         };
         let texture = if strands && effects.layout == 2 {
@@ -115,8 +139,26 @@ impl DabPaint<'_> {
     }
 
     /// New value for a pixel with destination `dst`, or None when the dab leaves it unchanged.
-    pub(super) fn blend(&self, shade: &Shade, dst: u32) -> Option<u32> {
-        let (kind, color, alpha) = (self.brush.kind, shade.color, shade.alpha);
+    /// `idx` is the canvas index of an on-canvas pixel; glazing applies only there.
+    pub(super) fn blend(&self, shade: &Shade, dst: u32, idx: Option<usize>) -> Option<u32> {
+        let (kind, alpha, color) = (self.brush.kind, shade.alpha, shade.color);
+        if let (Some(glaze), Some(i), image_tip::KIND) = (self.glaze, idx, kind) {
+            let cover = (alpha.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            if cover <= glaze.coverage[i].fetch_max(cover, std::sync::atomic::Ordering::Relaxed) {
+                return None;
+            }
+            let base = glaze.before[i];
+            let ink = match glaze.mode {
+                Some(mode) if base >> 24 != 0 => composite(base, color | 0xff000000, 1.0, mode) & 0x00ffffff | (color & 0xff000000),
+                _ => color,
+            };
+            let cover = cover as f32 / 255.0;
+            return if self.lock {
+                (base >> 24 != 0).then(|| composite(base | 0xff000000, ink | 0xff000000, cover, "Normal") & 0x00ffffff | (base & 0xff000000))
+            } else {
+                Some(composite(base, ink, cover, "Normal"))
+            };
+        }
         if kind == 5 || (16..=31).contains(&kind) || (64..=127).contains(&kind) {
             if self.lock {
                 return None;
@@ -138,6 +180,6 @@ impl DabPaint<'_> {
     /// Full per-pixel result for pixels inside the canvas.
     pub(super) fn pixel(&self, x: i32, y: i32, idx: usize, dst: u32) -> Option<u32> {
         let shade = self.shade(x, y, idx, true, dst)?;
-        self.blend(&shade, dst)
+        self.blend(&shade, dst, Some(idx))
     }
 }

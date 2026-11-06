@@ -80,19 +80,19 @@ internal class CategoryIcon(context:Context,private val name:String,var chosen:B
         path.reset()
         when(name){
             "Recent"->{for(i in 0..9){val a=(i*PI/5-PI/2);val r=if(i%2==0)8f else 3.5f;val x=cos(a).toFloat()*r;val y=sin(a).toFloat()*r;if(i==0)path.moveTo(x,y)else path.lineTo(x,y)};path.close();p.style=Paint.Style.FILL;c.drawPath(path,p)}
-            "Sketching","Inking","Airbrushing"->{path.moveTo(0f,-9f);path.lineTo(-5f,6f);path.quadTo(0f,11f,5f,6f);path.close();if(name=="Airbrushing")p.style=Paint.Style.FILL;c.drawPath(path,p);c.drawLine(0f,-2f,0f,5f,p)}
-            "Drawing","Calligraphy"->{path.moveTo(-7f,1f);path.cubicTo(8f,-15f,12f,0f,-2f,4f);path.cubicTo(-9f,11f,3f,11f,7f,4f);c.drawPath(path,p)}
-            "Painting"->{c.drawRoundRect(-4f,-8f,4f,2f,1f,1f,p);c.drawLine(0f,2f,0f,10f,p);c.drawLine(-3f,-4f,3f,-4f,p)}
-            "Charcoals","Industrial"->{for(i in -1..1){c.drawLine(i*4f,-7f,i*4f,7f,p)}}
-            "Textures","Materials"->{c.drawRoundRect(-7f,-7f,7f,7f,2f,2f,p);for(i in -1..1)c.drawLine(-5f,i*4f+3,5f,i*4f-3,p)}
-            "Abstract"->{path.moveTo(0f,-8f);path.lineTo(-8f,7f);path.lineTo(8f,7f);path.close();c.drawPath(path,p);c.drawCircle(0f,3f,2f,p)}
-            "Artistic"->{path.moveTo(5f,6f);path.cubicTo(-5f,14f,-13f,-3f,-4f,-7f);path.cubicTo(4f,-11f,13f,0f,7f,1f);path.quadTo(1f,0f,5f,6f);c.drawPath(path,p);c.drawCircle(-4f,-3f,1f,p);c.drawCircle(1f,-5f,1f,p);c.drawCircle(-5f,2f,1f,p)}
-            "Elements"->{c.drawCircle(0f,0f,8f,p);c.drawOval(-3f,-8f,3f,8f,p);c.drawLine(-7f,-3f,7f,-3f,p);c.drawLine(-7f,3f,7f,3f,p)}
-            "Spraypaints"->{c.drawRoundRect(-5f,-3f,5f,9f,2f,2f,p);c.drawRect(-2f,-6f,2f,-3f,p);c.drawLine(0f,-9f,4f,-9f,p);c.drawCircle(7f,-9f,.6f,p)}
-            "Vintage"->{c.drawLine(-6f,-8f,6f,-8f,p);c.drawLine(-6f,8f,6f,8f,p);path.moveTo(-5f,-8f);path.cubicTo(-5f,0f,5f,0f,5f,8f);path.moveTo(5f,-8f);path.cubicTo(5f,0f,-5f,0f,-5f,8f);c.drawPath(path,p)}
-            "Luminance"->{path.moveTo(0f,-10f);path.quadTo(1f,-1f,9f,0f);path.quadTo(1f,1f,0f,10f);path.quadTo(-1f,1f,-9f,0f);path.quadTo(-1f,-1f,0f,-10f);c.drawPath(path,p)}
-            "Organic"->{path.moveTo(-6f,7f);path.cubicTo(-10f,-5f,2f,-8f,8f,-8f);path.cubicTo(9f,1f,4f,10f,-6f,7f);c.drawPath(path,p);c.drawLine(-7f,9f,4f,-3f,p)}
-            "Water"->{path.moveTo(0f,-9f);path.cubicTo(-4f,-1f,-8f,1f,-6f,6f);path.cubicTo(-3f,11f,6f,10f,6f,4f);path.quadTo(6f,1f,0f,-9f);c.drawPath(path,p)}
+            "Pencils","Pens","Airbrush"->{path.moveTo(0f,-9f);path.lineTo(-5f,6f);path.quadTo(0f,11f,5f,6f);path.close();if(name=="Airbrush")p.style=Paint.Style.FILL;c.drawPath(path,p);c.drawLine(0f,-2f,0f,5f,p)}
+            "Lines","Lettering"->{path.moveTo(-7f,1f);path.cubicTo(8f,-15f,12f,0f,-2f,4f);path.cubicTo(-9f,11f,3f,11f,7f,4f);c.drawPath(path,p)}
+            "Paints"->{c.drawRoundRect(-4f,-8f,4f,2f,1f,1f,p);c.drawLine(0f,2f,0f,10f,p);c.drawLine(-3f,-4f,3f,-4f,p)}
+            "Charcoal","Grit"->{for(i in -1..1){c.drawLine(i*4f,-7f,i*4f,7f,p)}}
+            "Texture","Surfaces"->{c.drawRoundRect(-7f,-7f,7f,7f,2f,2f,p);for(i in -1..1)c.drawLine(-5f,i*4f+3,5f,i*4f-3,p)}
+            "Shapes"->{path.moveTo(0f,-8f);path.lineTo(-8f,7f);path.lineTo(8f,7f);path.close();c.drawPath(path,p);c.drawCircle(0f,3f,2f,p)}
+            "Expressive"->{path.moveTo(5f,6f);path.cubicTo(-5f,14f,-13f,-3f,-4f,-7f);path.cubicTo(4f,-11f,13f,0f,7f,1f);path.quadTo(1f,0f,5f,6f);c.drawPath(path,p);c.drawCircle(-4f,-3f,1f,p);c.drawCircle(1f,-5f,1f,p);c.drawCircle(-5f,2f,1f,p)}
+            "Nature"->{c.drawCircle(0f,0f,8f,p);c.drawOval(-3f,-8f,3f,8f,p);c.drawLine(-7f,-3f,7f,-3f,p);c.drawLine(-7f,3f,7f,3f,p)}
+            "Spray"->{c.drawRoundRect(-5f,-3f,5f,9f,2f,2f,p);c.drawRect(-2f,-6f,2f,-3f,p);c.drawLine(0f,-9f,4f,-9f,p);c.drawCircle(7f,-9f,.6f,p)}
+            "Retro"->{c.drawLine(-6f,-8f,6f,-8f,p);c.drawLine(-6f,8f,6f,8f,p);path.moveTo(-5f,-8f);path.cubicTo(-5f,0f,5f,0f,5f,8f);path.moveTo(5f,-8f);path.cubicTo(5f,0f,-5f,0f,-5f,8f);c.drawPath(path,p)}
+            "Glow"->{path.moveTo(0f,-10f);path.quadTo(1f,-1f,9f,0f);path.quadTo(1f,1f,0f,10f);path.quadTo(-1f,1f,-9f,0f);path.quadTo(-1f,-1f,0f,-10f);c.drawPath(path,p)}
+            "Botanical"->{path.moveTo(-6f,7f);path.cubicTo(-10f,-5f,2f,-8f,8f,-8f);path.cubicTo(9f,1f,4f,10f,-6f,7f);c.drawPath(path,p);c.drawLine(-7f,9f,4f,-3f,p)}
+            "Watercolour"->{path.moveTo(0f,-9f);path.cubicTo(-4f,-1f,-8f,1f,-6f,6f);path.cubicTo(-3f,11f,6f,10f,6f,4f);path.quadTo(6f,1f,0f,-9f);c.drawPath(path,p)}
             "Imported"->{path.moveTo(-8f,7f);path.lineTo(-8f,-6f);path.lineTo(-1f,-6f);path.lineTo(2f,-3f);path.lineTo(8f,-3f);path.lineTo(8f,7f);path.close();c.drawPath(path,p)}
             else->{c.drawCircle(0f,0f,8f,p);c.drawCircle(-3f,-3f,1f,p);c.drawCircle(3f,2f,2f,p);c.drawLine(-4f,5f,3f,-5f,p)}
         };c.restore()

@@ -42,7 +42,7 @@ class TutorialSceneCaptureTest {
                 File(dir,"$name.png").outputStream().use{b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle();metadata.put(name,item)
             }
             try{
-                e.setLightInterface(light);e.dismissPanel();layout(e);s.choose(brushPresets.first{it.name=="Studio Pen"});s.size=5f;s.color=0xff3b75b5.toInt();s.stabilization=0f;s.pressureSize=0f
+                e.setLightInterface(light);e.dismissPanel();layout(e);s.choose(brushPresets.first{it.name=="Ink Pen"});s.size=5f;s.color=0xff3b75b5.toInt();s.stabilization=0f;s.pressureSize=0f
                 val points=FloatArray(97*4);for(i in 0..96){val t=i/96f*2*PI;points[i*4]=200+cos(t).toFloat()*92;points[i*4+1]=150+sin(t).toFloat()*74;points[i*4+2]=1f}
                 s.stroke(0,points.copyOfRange(0,4));s.stroke(1,points.copyOfRange(4,points.size));s.stroke(2,floatArrayOf());command("info");s.color=0xffe3a252.toInt();e.refreshTools();scene("workspace")
                 val fitted=camera()
@@ -51,10 +51,10 @@ class TutorialSceneCaptureTest {
                 tap("Color");scene("colors");e.dismissPanel();layout(e)
                 command("flood",JSONObject().put("x",200).put("y",150).put("color",0xffe3a252L).put("tolerance",.2));scene("filled");command("undo")
                 tap("Paint Mixing");scene("mixing");e.dismissPanel();layout(e)
-                s.choose(brushPresets.first{it.name=="Water Wash"});s.pressureSize=0f;s.pressureOpacity=0f;s.size=70f;s.color=Color.BLUE
+                s.choose(brushPresets.first{it.name=="Clear Wash"});s.pressureSize=0f;s.pressureOpacity=0f;s.size=70f;s.color=Color.BLUE
                 s.stroke(0,floatArrayOf(90f,150f,1f,0f));s.stroke(1,floatArrayOf(310f,150f,1f,0f));s.stroke(2,floatArrayOf());command("info")
                 s.color=Color.YELLOW;s.paintMixingEnabled=true;s.paintBrush.wetMix=.8f;s.paintBrush.wetPickup=.6f;s.paintBrush.wetness=.65f
-                s.stroke(0,floatArrayOf(200f,65f,1f,0f));s.stroke(1,floatArrayOf(200f,240f,1f,0f));s.stroke(2,floatArrayOf());command("info");scene("mixing-result");command("undo");command("undo");s.choose(brushPresets.first{it.name=="Studio Pen"});s.size=5f;s.color=0xffe3a252.toInt();e.refreshTools()
+                s.stroke(0,floatArrayOf(200f,65f,1f,0f));s.stroke(1,floatArrayOf(200f,240f,1f,0f));s.stroke(2,floatArrayOf());command("info");scene("mixing-result");command("undo");command("undo");s.choose(brushPresets.first{it.name=="Ink Pen"});s.size=5f;s.color=0xffe3a252.toInt();e.refreshTools()
                 tap("Layers");scene("layers");e.dismissPanel();command("add");command("group",JSONObject().put("action","create").put("name","Color study").put("empty",true));tap("Layers");scene("group-empty");e.dismissPanel();command("group",JSONObject().put("action","member").put("id",s.info.getJSONArray("groups").getJSONObject(0).getLong("id")));tap("Layers");scene("groups");tap("Options for group Color study")
                 val options=shadowOf(RuntimeEnvironment.getApplication()).latestPopupWindow;tap("Blend & opacity",options.contentView);scene("group-blend",shadowOf(RuntimeEnvironment.getApplication()).latestPopupWindow);options.dismiss();e.dismissPanel();layout(e)
                 val fit=QuickShape.fit((0..96).map{i->PointF(points[i*4],points[i*4+1])})!!;e.canvas.quickShapeEdit.start(fit);e.canvas.quickShapeEdit.release();command("info");scene("shape");e.canvas.finishQuickShape(true);command("info")
